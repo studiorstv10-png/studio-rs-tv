@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Studio RS TV — Painel</title>
+  <style>
+    :root { --primary:#0a2342; --accent:#1f6feb; }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; margin:0; background:#0b1220; color:#e6edf3;}
+    header{background:var(--primary); padding:14px 18px; display:flex; align-items:center; gap:12px; position:sticky; top:0;}
+    header img{height:28px;}
+    header h1{font-size:18px; margin:0; font-weight:700; letter-spacing:0.3px;}
+    .bar{display:flex; gap:8px; margin-left:auto; align-items:center;}
+    input,select,button{background:#0f1a2d; color:#e6edf3; border:1px solid #263149; border-radius:10px; padding:8px 10px; outline:none;}
+    button{cursor:pointer;}
+    .btn{background:var(--accent); border-color:var(--accent); color:white; font-weight:600}
+    main{max-width:1100px; margin:18px auto; padding:0 14px; display:grid; gap:16px; grid-template-columns: 1fr 1fr;}
+    section{background:#0f172a; border:1px solid #1f2937; border-radius:16px; padding:14px;}
+    h2{font-size:16px; margin:0 0 10px 0;}
+    table{width:100%; border-collapse:collapse;}
+    th,td{border-bottom:1px solid #1f2937; padding:8px; font-size:14px;}
+    .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;}
+    .stack{display:grid; gap:8px;}
+    .muted{opacity:.85; font-size:12px;}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+    .pill{background:#111827; border:1px dashed #263149; border-radius:10px; padding:10px; display:flex; gap:10px; align-items:center; justify-content:space-between;}
+    .item{display:flex; gap:10px; align-items:center; padding:6px 8px; background:#0c1324; border:1px solid #1f2937; border-radius:10px;}
+    .list{display:grid; gap:8px; max-height:280px; overflow:auto; padding-right:4px;}
+    .link{color:#9ecbff; text-decoration:none}
+    .warn{color:#ffd166}
+    .ok{color:#34d399}
+    .qr{background:white; padding:6px; border-radius:8px; display:inline-block}
+    .flex{display:flex; gap:8px; align-items:center}
+    .grow{flex:1}
+    .right{margin-left:auto}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="https://dummyimage.com/120x28/ffffff/000.png&text=Studio+RS+TV" alt="logo" id="brandLogo">
+    <h1>Painel</h1>
+    <div class="bar">
+      <input id="apiBase" class="mono" placeholder="API Base URL (ex.: https://studiorstv.onrender.com)" style="min-width:380px">
+      <input id="adminKey" class="mono" placeholder="Senha do Admin">
+      <button class="btn" onclick="saveHeader()">Usar</button>
+      <span id="ping" class="muted mono">...</span>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Marca</h2>
+      <div class="stack">
+        <div class="row">
+          <input id="brandName" placeholder="Nome (ex.: Studio RS TV)" class="grow">
+          <input id="brandPrimary" placeholder="Cor primária #0a2342" class="mono" style="width:140px">
+          <input id="brandAccent" placeholder="Acento #1f6feb" class="mono" style="width:140px">
+        </div>
+        <div class="row">
+          <input id="brandLogoUrl" placeholder="URL do logo (png branco recomendado)" class="grow">
+          <button onclick="saveBranding()" class="btn">Salvar Marca</button>
+        </div>
+        <div class="muted">Essas cores afetam a UI e o player. O logo aparece no canto quando disponível.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Terminais</h2>
+      <div class="row">
+        <input id="termCode" placeholder="Código (ex.: LOJA-59)" class="mono">
+        <input id="termTitle" placeholder="Nome visível">
+        <input id="termGroup" placeholder="Grupo (opcional)">
+        <button onclick="addTerminal()" class="btn">Criar</button>
+      </div>
+      <div id="termsList" class="list"></div>
+    </section>
+
+    <section>
+      <h2>Uploads</h2>
+      <div class="row">
+        <input id="fileInput" type="file" multiple>
+        <button onclick="doUpload()" class="btn">Enviar</button>
+        <button onclick="loadUploads()">Atualizar</button>
+      </div>
+      <div id="uploadsList" class="list"></div>
+      <div class="muted">Arquivos ficam em <span class="mono">/uploads</span> (persistente se usar disco no Render). Tipos: mp4, mov, mkv, jpg, png, gif, webp.</div>
+    </section>
+
+    <section>
+      <h2>Playlist</h2>
+      <div class="row">
+        <select id="plTerminal"></select>
+        <button onclick="loadPlaylist()">Carregar</button>
+        <div class="right flex">
+          <div id="shortLink" class="mono muted"></div>
+          <div id="qrBox" style="margin-left:8px"></div>
+        </div>
+      </div>
+      <div class="row">
+        <select id="itemType">
+          <option value="video">Vídeo</option>
+          <option value="image">Imagem</option>
+          <option value="rss">RSS</option>
+        </select>
+        <input id="itemUrl" class="grow mono" placeholder="URL do arquivo ou RSS">
+        <input id="itemDuration" class="mono" placeholder="Duração (s) para imagem (ex.: 8)" style="width:120px">
+        <button onclick="addItem()" class="btn">Adicionar</button>
+      </div>
+      <div id="plItems" class="list"></div>
+      <div class="row">
+        <button onclick="savePlaylist()" class="btn">Salvar Playlist</button>
+        <span id="savedAt" class="muted mono"></span>
+      </div>
+    </section>
+  </main>
+
+<script>
+let apiBase = localStorage.getItem("apiBase") || window.location.origin;
+let adminKey = localStorage.getItem("adminKey") || "";
+document.getElementById("apiBase").value = apiBase;
+document.getElementById("adminKey").value = adminKey;
+
+function headers() {
+  return { "x-admin-key": adminKey, "Content-Type": "application/json" };
+}
+
+function saveHeader(){
+  apiBase = document.getElementById("apiBase").value.trim() || window.location.origin;
+  adminKey = document.getElementById("adminKey").value.trim();
+  localStorage.setItem("apiBase", apiBase);
+  localStorage.setItem("adminKey", adminKey);
+  ping();
+  loadBranding();
+  loadTerms();
+  loadUploads();
+}
+
+async function ping(){
+  try{
+    const r = await fetch(apiBase + "/api/v1/ping");
+    document.getElementById("ping").textContent = r.ok ? "online" : "offline";
+    document.getElementById("ping").className = r.ok ? "ok mono" : "warn mono";
+  }catch(e){
+    document.getElementById("ping").textContent = "offline";
+    document.getElementById("ping").className = "warn mono";
+  }
+}
+ping();
+
+// Branding
+async function loadBranding(){
+  try{
+    const r = await fetch(apiBase + "/api/v1/admin/branding", { headers: headers() });
+    if(!r.ok) return;
+    const b = await r.json();
+    document.getElementById("brandName").value = b.name || "";
+    document.getElementById("brandPrimary").value = b.primary || "";
+    document.getElementById("brandAccent").value = b.accent || "";
+    document.getElementById("brandLogoUrl").value = b.logo_url || "";
+    document.documentElement.style.setProperty("--primary", b.primary || "#0a2342");
+    document.documentElement.style.setProperty("--accent", b.accent || "#1f6feb");
+    if(b.logo_url) document.getElementById("brandLogo").src = b.logo_url;
+  }catch(e){}
+}
+async function saveBranding(){
+  const payload = {
+    name: document.getElementById("brandName").value,
+    primary: document.getElementById("brandPrimary").value,
+    accent: document.getElementById("brandAccent").value,
+    logo_url: document.getElementById("brandLogoUrl").value
+  };
+  await fetch(apiBase + "/api/v1/admin/branding", {
+    method:"POST",
+    headers: headers(),
+    body: JSON.stringify(payload)
+  });
+  loadBranding();
+}
+
+// Terminals
+async function loadTerms(){
+  try{
+    const r = await fetch(apiBase + "/api/v1/admin/terminals", { headers: headers() });
+    if(!r.ok) return;
+    const items = await r.json();
+    const list = document.getElementById("termsList");
+    const sel = document.getElementById("plTerminal");
+    list.innerHTML = ""; sel.innerHTML = "";
+    items.forEach(t=>{
+      const row = document.createElement("div");
+      row.className="item";
+      row.innerHTML = `
+        <div class="grow"><b>${t.title || t.code}</b> <span class="muted mono">(${t.code})</span> ${t.group?`<span class="muted">• ${t.group}</span>`:""}</div>
+        <button onclick="delTerminal('${t.code}')">Excluir</button>`;
+      list.appendChild(row);
+      const opt = document.createElement("option");
+      opt.value = t.code; opt.textContent = `${t.code} — ${t.title || ""}`;
+      sel.appendChild(opt);
+    });
+  }catch(e){}
+}
+async function addTerminal(){
+  const payload = {
+    code: document.getElementById("termCode").value.trim(),
+    title: document.getElementById("termTitle").value.trim(),
+    group: document.getElementById("termGroup").value.trim()
+  };
+  if(!payload.code){ alert("Informe o código"); return; }
+  const r = await fetch(apiBase + "/api/v1/admin/terminals", {
+    method:"POST", headers: headers(), body: JSON.stringify(payload)
+  });
+  if(!r.ok){ alert("Erro ao criar (talvez código já exista)"); return; }
+  document.getElementById("termCode").value="";
+  document.getElementById("termTitle").value="";
+  document.getElementById("termGroup").value="";
+  loadTerms();
+}
+async function delTerminal(code){
+  if(!confirm("Excluir "+code+" ?")) return;
+  await fetch(apiBase + "/api/v1/admin/terminals?code="+encodeURIComponent(code), {
+    method:"DELETE", headers: headers()
+  });
+  loadTerms();
+}
+
+// Uploads
+async function doUpload(){
+  const inp = document.getElementById("fileInput");
+  if(!inp.files.length){ alert("Escolha arquivos"); return; }
+  for(const f of inp.files){
+    const fd = new FormData();
+    fd.append("file", f);
+    await fetch(apiBase + "/api/v1/admin/upload", {
+      method:"POST", headers: {"x-admin-key": adminKey}, body: fd
+    });
+  }
+  inp.value = "";
+  loadUploads();
+}
+async function loadUploads(){
+  const r = await fetch(apiBase + "/api/v1/admin/list_uploads", { headers: headers() });
+  if(!r.ok) return;
+  const files = await r.json();
+  const box = document.getElementById("uploadsList"); box.innerHTML="";
+  files.forEach(f=>{
+    const el = document.createElement("div");
+    el.className="item";
+    el.innerHTML = `<div class="grow mono">${f.url}</div>
+                    <a class="link" href="${apiBase+f.url}" target="_blank">abrir</a>`;
+    box.appendChild(el);
+  });
+}
+
+// Playlist
+let currentPL = { items: [], updated_at: "" };
+function rowItem(it, idx){
+  const dur = it.type==="image" ? (` <span class="muted">( ${it.duration||8}s )</span>`) : "";
+  return `<div class="item">
+    <div class="grow"><b>${it.type.toUpperCase()}</b> <span class="mono">${it.url}</span>${dur}</div>
+    <div class="flex">
+      <button onclick="moveItem(${idx}, -1)">▲</button>
+      <button onclick="moveItem(${idx}, 1)">▼</button>
+      <button onclick="delItem(${idx})">Remover</button>
+    </div>
+  </div>`;
+}
+function renderPL(){
+  const box = document.getElementById("plItems");
+  box.innerHTML = currentPL.items.map((it, i)=> rowItem(it,i)).join("");
+}
+function addItem(){
+  const type = document.getElementById("itemType").value;
+  const url = document.getElementById("itemUrl").value.trim();
+  const duration = parseInt(document.getElementById("itemDuration").value, 10);
+  if(!url){ alert("Informe URL"); return; }
+  const it = { type, url };
+  if(type==="image") it.duration = isNaN(duration)?8:duration;
+  currentPL.items.push(it);
+  document.getElementById("itemUrl").value="";
+  document.getElementById("itemDuration").value="";
+  renderPL();
+}
+function moveItem(i, delta){
+  const j = i+delta;
+  if(j<0 || j>=currentPL.items.length) return;
+  const tmp = currentPL.items[i];
+  currentPL.items[i] = currentPL.items[j];
+  currentPL.items[j] = tmp;
+  renderPL();
+}
+function delItem(i){
+  currentPL.items.splice(i,1);
+  renderPL();
+}
+
+async function loadPlaylist(){
+  const code = document.getElementById("plTerminal").value;
+  if(!code){ alert("Escolha o terminal"); return; }
+  const r = await fetch(apiBase + "/api/v1/admin/playlist/" + encodeURIComponent(code), { headers: headers() });
+  if(!r.ok){ currentPL={items:[],updated_at:""}; renderPL(); return; }
+  try{ currentPL = await r.json(); }catch{ currentPL={items:[],updated_at:""}; }
+  renderPL();
+  document.getElementById("savedAt").textContent = currentPL.updated_at? ("Última atualização: "+currentPL.updated_at):"";
+  const short = apiBase + "/c/" + code;
+  document.getElementById("shortLink").textContent = short;
+  makeQR(short);
+}
+async function savePlaylist(){
+  const code = document.getElementById("plTerminal").value;
+  if(!code){ alert("Escolha o terminal"); return; }
+  const payload = { items: currentPL.items };
+  const r = await fetch(apiBase + "/api/v1/admin/playlist/" + encodeURIComponent(code), {
+    method:"POST", headers: headers(), body: JSON.stringify(payload)
+  });
+  if(r.ok){ loadPlaylist(); }
+}
+
+// QR minimal (no lib): use Google Chart API
+function makeQR(text){
+  const url = "https://chart.googleapis.com/chart?cht=qr&chs=140x140&chld=L|0&chl=" + encodeURIComponent(text);
+  document.getElementById("qrBox").innerHTML = `<img class="qr" src="${url}" alt="QR">`;
+}
+
+// boot
+saveHeader();
+</script>
+</body>
+</html>

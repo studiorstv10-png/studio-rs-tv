@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "type": "video",
+      "url": "/uploads/sample.mp4"
+    },
+    {
+      "type": "image",
+      "url": "/uploads/banner.jpg",
+      "duration": 8
+    },
+    {
+      "type": "rss",
+      "url": "https://jornalvozdolitoral.com/rss"
+    }
+  ],
+  "updated_at": "2025-08-18T00:00:00Z"
+}
