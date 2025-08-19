@@ -1,228 +1,284 @@
+import os, json, re, uuid
+from datetime import datetime, timedelta, timezone
+from flask import Flask, jsonify, request, send_from_directory, abort
 
-import os
-from flask import Flask, request, jsonify, send_from_directory, render_template_string, abort
-from werkzeug.utils import secure_filename
-from datetime import datetime, timezone
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-PLAYLISTS_DIR = os.path.join(DATA_DIR, "playlists")
-UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(PLAYLISTS_DIR, exist_ok=True)
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-os.makedirs(STATIC_DIR, exist_ok=True)
-
+# ------------------------------
+# CONFIG
+# ------------------------------
+APP_TITLE = "Studio RS TV"
 ADMIN_KEY = os.environ.get("ADMIN_KEY", "admin123")
+DB_PATH = os.environ.get("DB_PATH", "data/db.json")
 
-def utcnow_iso():
-    return datetime.now(timezone.utc).isoformat()
+# Marca (fixa por env)
+BRAND_NAME  = os.environ.get("BRAND_NAME",  "Studio RS TV")
+BRAND_COLOR = os.environ.get("BRAND_COLOR", "#0d1b2a")
+BRAND_LOGO  = os.environ.get("BRAND_LOGO",  None)  # URL PNG (opcional)
+BRAND_LOCKED = os.environ.get("BRAND_LOCKED", "1") == "1"
 
-def read_json(path, default):
+POLL_SECONDS_DEFAULT = int(os.environ.get("POLL_SECONDS", "60"))
+
+# ------------------------------
+# APP / STATIC
+# ------------------------------
+app = Flask(
+    __name__,
+    static_folder="static",         # painéis, assets, uploads
+    static_url_path=""              # / -> static/index.html, /uploads -> static/uploads
+)
+
+# Garante pastas
+os.makedirs("data", exist_ok=True)
+os.makedirs(os.path.join(app.static_folder, "uploads"), exist_ok=True)
+
+# ------------------------------
+# HELPERS
+# ------------------------------
+CODE_RX = re.compile(r"^[A-Za-z0-9_\-]{1,32}$")
+
+def _now():
+    return datetime.now(timezone.utc)
+
+def _now_iso():
+    return _now().isoformat()
+
+def _in_days(n):
+    return (_now() + timedelta(days=n)).date().isoformat()
+
+def load_db():
+    if not os.path.exists(DB_PATH):
+        db = {
+            "brand": {
+                "name": BRAND_NAME,
+                "primary_color": BRAND_COLOR,
+                "logo": BRAND_LOGO
+            },
+            "terminals": {},   # "CODE": {...}
+            "playlists": {}    # "CODE": [ {type,url,duration}, ...]
+        }
+        save_db(db)
+        return db
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(DB_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        return default
+        # Se corromper, recomeça básico (poderia logar)
+        db = {
+            "brand": {
+                "name": BRAND_NAME,
+                "primary_color": BRAND_COLOR,
+                "logo": BRAND_LOGO
+            },
+            "terminals": {},
+            "playlists": {}
+        }
+        save_db(db)
+        return db
 
-def write_json(path, data):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def save_db(db):
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    with open(DB_PATH, "w", encoding="utf-8") as f:
+        json.dump(db, f, ensure_ascii=False, indent=2)
 
-# ----- App -----
-app = Flask(__name__, static_folder="static", static_url_path="/static")
+def require_admin(data):
+    key = (data.get("key") or "").strip()
+    if key != ADMIN_KEY:
+        abort(401)
 
-# Admin UI (served as a simple template wrapper to the admin SPA file)
-@app.route("/")
+# ------------------------------
+# ROTAS PÁGINA
+# ------------------------------
+@app.get("/")
 def index():
-    # Serve the admin single-file HTML
-    try:
-        with open(os.path.join(BASE_DIR, "admin", "admin.html"), "r", encoding="utf-8") as f:
-            html = f.read()
-        return render_template_string(html)
-    except Exception as e:
-        return f"Admin UI missing: {e}", 500
+    # Serve painel (static/index.html)
+    return app.send_static_file("index.html")
 
-@app.route("/api/v1/ping")
-def ping():
-    return jsonify({"ok": True, "ts": utcnow_iso()})
-
-# ----- Terminals storage -----
-TERMINALS_PATH = os.path.join(DATA_DIR, "terminals.json")
-
-def list_terminals():
-    return read_json(TERMINALS_PATH, default=[])
-
-def save_terminals(items):
-    write_json(TERMINALS_PATH, items)
-
-# ----- Branding storage -----
-BRAND_PATH = os.path.join(DATA_DIR, "branding.json")
-
-def get_branding():
-    return read_json(BRAND_PATH, default={
-        "name": "Studio RS TV",
-        "primary": "#0a2342",
-        "accent": "#1f6feb",
-        "logo_url": ""
-    })
-
-def save_branding(obj):
-    write_json(BRAND_PATH, obj)
-
-# ----- Admin endpoints -----
-def check_admin():
-    key = request.headers.get("x-admin-key") or request.args.get("admin_key")
-    if not key or key != ADMIN_KEY:
-        abort(401, description="Unauthorized")
-
-@app.route("/api/v1/admin/terminals", methods=["GET", "POST", "DELETE"])
-def admin_terminals():
-    check_admin()
-    if request.method == "GET":
-        return jsonify(list_terminals())
-
-    if request.method == "POST":
-        payload = request.get_json(force=True, silent=True) or {}
-        code = payload.get("code", "").strip()
-        if not code:
-            return jsonify({"ok": False, "error": "code is required"}), 400
-        title = payload.get("title", code)
-        group = payload.get("group", "")
-        items = list_terminals()
-        if any(t.get("code") == code for t in items):
-            return jsonify({"ok": False, "error": "code already exists"}), 400
-        items.append({
-            "code": code,
-            "title": title,
-            "group": group,
-            "created_at": utcnow_iso(),
-            "active": True
-        })
-        save_terminals(items)
-        return jsonify({"ok": True})
-
-    if request.method == "DELETE":
-        code = request.args.get("code", "").strip()
-        items = list_terminals()
-        items = [t for t in items if t.get("code") != code]
-        save_terminals(items)
-        # also remove playlist file if exists
-        pl_path = os.path.join(PLAYLISTS_DIR, f"{code}.json")
-        if os.path.exists(pl_path):
-            os.remove(pl_path)
-        return jsonify({"ok": True})
-
-@app.route("/api/v1/admin/branding", methods=["GET", "POST"])
-def admin_branding():
-    check_admin()
-    if request.method == "GET":
-        return jsonify(get_branding())
-    data = request.get_json(force=True, silent=True) or {}
-    name = data.get("name") or "Studio RS TV"
-    primary = data.get("primary") or "#0a2342"
-    accent = data.get("accent") or "#1f6feb"
-    logo_url = data.get("logo_url") or ""
-    save_branding({"name": name, "primary": primary, "accent": accent, "logo_url": logo_url})
-    return jsonify({"ok": True})
-
-# ----- Uploads -----
-ALLOWED_EXTS = {"mp4", "mov", "mkv", "jpg", "jpeg", "png", "gif", "webp"}
-
-def allowed_file(fname):
-    return "." in fname and fname.rsplit(".", 1)[1].lower() in ALLOWED_EXTS
-
-@app.route("/api/v1/admin/upload", methods=["POST"])
-def upload_file():
-    check_admin()
-    if "file" not in request.files:
-        return jsonify({"ok": False, "error": "no file part"}), 400
-    f = request.files["file"]
-    if f.filename == "":
-        return jsonify({"ok": False, "error": "empty filename"}), 400
-    if not allowed_file(f.filename):
-        return jsonify({"ok": False, "error": "unsupported file type"}), 400
-    fname = secure_filename(f.filename)
-    dest = os.path.join(UPLOADS_DIR, fname)
-    f.save(dest)
-    url = f"/uploads/{fname}"
-    return jsonify({"ok": True, "filename": fname, "url": url})
-
-@app.route("/api/v1/admin/list_uploads")
-def list_uploads():
-    check_admin()
-    files = []
-    for fname in sorted(os.listdir(UPLOADS_DIR)):
-        path = os.path.join(UPLOADS_DIR, fname)
-        if os.path.isfile(path) and allowed_file(fname):
-            files.append({
-                "name": fname,
-                "size": os.path.getsize(path),
-                "url": f"/uploads/{fname}"
-            })
-    return jsonify(files)
-
-@app.route("/uploads/<path:filename>")
-def serve_upload(filename):
-    return send_from_directory(UPLOADS_DIR, filename, as_attachment=False)
-
-# ----- Playlists -----
-def playlist_path(code):
-    return os.path.join(PLAYLISTS_DIR, f"{code}.json")
-
-@app.route("/api/v1/admin/playlist/<code>", methods=["GET", "POST"])
-def admin_playlist(code):
-    check_admin()
-    code = secure_filename(code)
-    path = playlist_path(code)
-    if request.method == "GET":
-        return send_from_directory(PLAYLISTS_DIR, f"{code}.json") if os.path.exists(path) else jsonify({"items":[],"updated_at": utcnow_iso()})
-    # POST save
-    data = request.get_json(force=True, silent=True) or {}
-    data["updated_at"] = utcnow_iso()
-    write_json(path, data)
-    return jsonify({"ok": True})
-
-# ----- Public: config for player -----
-@app.route("/api/v1/config")
-def config():
-    code = request.args.get("code", "").strip()
-    if not code:
-        return jsonify({"ok": False, "error": "code required"}), 400
-    # find terminal
-    terminals = list_terminals()
-    term = next((t for t in terminals if t.get("code") == code), None)
-    if not term or not term.get("active", True):
-        return jsonify({"ok": False, "error": "terminal not found or inactive"}), 404
-
-    path = playlist_path(code)
-    playlist = read_json(path, default={"items": [], "updated_at": utcnow_iso()})
-    brand = get_branding()
-    base_url = request.url_root.rstrip("/")
-
-    # Build a compact payload for the player
-    payload = {
-        "ok": True,
-        "terminal": {"code": code, "title": term.get("title", code)},
-        "branding": brand,
-        "playlist": playlist.get("items", []),
-        "updated_at": playlist.get("updated_at", utcnow_iso()),
-        "assets_base": base_url  # so player can resolve /uploads/xyz
-    }
-    return jsonify(payload)
-
-# Pretty short link: /c/<code>
-@app.route("/c/<code>")
-def short_config(code):
-    return config()
-
-# favicon (avoid 404 noise)
-@app.route("/favicon.ico")
+# (Opcional) Favicon silencioso
+@app.get("/favicon.ico")
 def favicon():
     return ("", 204)
 
+# ------------------------------
+# MARCA
+# ------------------------------
+@app.get("/api/v1/brand")
+def brand_get():
+    db = load_db()
+    brand = db.get("brand", {})
+    # força env (se travado)
+    if BRAND_LOCKED:
+        brand = {"name": BRAND_NAME, "primary_color": BRAND_COLOR, "logo": BRAND_LOGO}
+    return jsonify({"brand": brand, "locked": BRAND_LOCKED})
+
+@app.post("/api/v1/brand")
+def brand_set():
+    if BRAND_LOCKED:
+        return jsonify({"error": "locked"}), 403
+    data = request.get_json(silent=True) or {}
+    require_admin(data)
+
+    name  = (data.get("name") or BRAND_NAME).strip()
+    color = (data.get("primary_color") or BRAND_COLOR).strip()
+    logo  = (data.get("logo") or BRAND_LOGO)
+
+    db = load_db()
+    db["brand"] = {"name": name, "primary_color": color, "logo": logo}
+    save_db(db)
+    return jsonify({"ok": True, "brand": db["brand"]})
+
+# ------------------------------
+# TERMINAIS
+# ------------------------------
+@app.get("/api/v1/admin/terminals")
+def list_terminals():
+    # listagem simples (sem key pra facilitar select do painel)
+    db = load_db()
+    terms = list(db.get("terminals", {}).values())
+    return jsonify({"items": terms})
+
+@app.post("/api/v1/admin/terminals")
+def create_terminal():
+    data = request.get_json(silent=True) or {}
+    require_admin(data)
+
+    code  = (data.get("code") or "").strip()
+    name  = (data.get("name") or "").strip()
+    group = (data.get("group") or "").strip()
+
+    if not code or not CODE_RX.match(code):
+        return jsonify({"error": "invalid_code",
+                        "detail": "Use apenas letras, números, '-' ou '_' (até 32 chars)."}), 400
+    if not name:
+        name = code
+
+    db = load_db()
+    if code in db["terminals"]:
+        return jsonify({"error": "exists"}), 409
+
+    db["terminals"][code] = {
+        "code": code,
+        "name": name,
+        "group": group,
+        "created_at": _now_iso(),
+        "updated_at": _now_iso(),
+        "trial_until": _in_days(15)
+    }
+    db["playlists"].setdefault(code, [])
+    save_db(db)
+    return jsonify({"ok": True, "terminal": db["terminals"][code]})
+
+# ------------------------------
+# PLAYLIST
+# ------------------------------
+@app.get("/api/v1/playlist")
+def get_playlist():
+    code = (request.args.get("code") or "").strip()
+    db = load_db()
+    items = db.get("playlists", {}).get(code, [])
+    return jsonify({"code": code, "items": items})
+
+@app.post("/api/v1/playlist")
+def set_playlist():
+    data = request.get_json(silent=True) or {}
+    require_admin(data)
+
+    code  = (data.get("code") or "").strip()
+    items = data.get("items", [])
+
+    if not code:
+        return jsonify({"error": "missing_code"}), 400
+
+    db = load_db()
+    if code not in db["terminals"]:
+        return jsonify({"error": "not_found"}), 404
+
+    # valida itens básicos
+    sanitized = []
+    for it in items:
+        t = (it.get("type") or "").strip().lower()
+        url = (it.get("url") or "").strip()
+        dur = it.get("duration")
+        if t not in ("video","image","rss"):
+            continue
+        if not url:
+            continue
+        if t == "image":
+            # duração obrigatória para image/rss
+            try:
+                dur = int(dur)
+            except Exception:
+                dur = 10
+        sanitized.append({"type": t, "url": url, "duration": dur})
+
+    db["playlists"][code] = sanitized
+    db["terminals"][code]["updated_at"] = _now_iso()
+    save_db(db)
+    return jsonify({"ok": True, "count": len(sanitized)})
+
+# ------------------------------
+# CONFIG PARA O PLAYER
+# ------------------------------
+@app.get("/api/v1/config")
+def get_config():
+    code = (request.args.get("code") or "").strip()
+    db = load_db()
+
+    term = db.get("terminals", {}).get(code)
+    if not term:
+        return jsonify({"error": "terminal_not_found"}), 404
+
+    brand = db.get("brand", {"name": BRAND_NAME, "primary_color": BRAND_COLOR, "logo": BRAND_LOGO})
+    if BRAND_LOCKED:
+        brand = {"name": BRAND_NAME, "primary_color": BRAND_COLOR, "logo": BRAND_LOGO}
+
+    playlist = db.get("playlists", {}).get(code, [])
+
+    resp = {
+        "brand": brand,
+        "name": APP_TITLE,
+        "layout": "16:9",
+        "poll_seconds": POLL_SECONDS_DEFAULT,
+        "playlist": playlist,
+        "terminal": {"code": code, "name": term.get("name")},
+        "trial_until": term.get("trial_until"),
+        "updated_at": _now_iso(),
+        "status": "ok",
+        "config_version": 1
+    }
+    return jsonify(resp)
+
+# ------------------------------
+# UPLOADS
+# ------------------------------
+@app.post("/api/v1/upload")
+def upload_file():
+    # multipart/form-data  -> field: file
+    if "file" not in request.files:
+        return jsonify({"error": "missing_file"}), 400
+    f = request.files["file"]
+    if f.filename == "":
+        return jsonify({"error": "empty_filename"}), 400
+
+    ext = os.path.splitext(f.filename)[1].lower()
+    safe_name = uuid.uuid4().hex + ext
+    dest_dir = os.path.join(app.static_folder, "uploads")
+    os.makedirs(dest_dir, exist_ok=True)
+    path = os.path.join(dest_dir, safe_name)
+    f.save(path)
+
+    # URL pública
+    url = f"/uploads/{safe_name}"
+    return jsonify({"ok": True, "url": url})
+
+# ------------------------------
+# PING
+# ------------------------------
+@app.get("/api/v1/ping")
+def ping():
+    return jsonify({"ok": True, "ts": _now_iso()})
+
+# ------------------------------
+# START
+# ------------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    # Dev: http://localhost:8000
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
