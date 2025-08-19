@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Studio RS TV — Painel</title>
+<style>
+:root{--bg:#0b1220;--card:#101828;--muted:#a8b3cf;--brand:#0d1b2a;--ok:#2563eb;--okh:#1e4fd1;}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:#e6e9f4;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
+.wrap{max-width:1150px;margin:32px auto;padding:0 16px}
+h1{font-weight:700;margin:0 0 16px;font-size:22px}
+.card{background:var(--card);border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 1px 0 #0005}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.col{flex:1;min-width:300px}
+label{display:block;font-size:12px;color:var(--muted);margin:6px 0 6px}
+input,select,button,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #232d43;background:#0e1628;color:#e6e9f4}
+button{background:var(--ok);border:0;font-weight:600;cursor:pointer}
+button:hover{background:var(--okh)}
+.small{font-size:12px;color:var(--muted)}
+.list{max-height:250px;overflow:auto;border:1px dashed #232d43;border-radius:10px;padding:8px}
+.item{padding:8px;border-radius:8px;display:flex;align-items:center;gap:10px;background:#0f1a2d;margin:6px 0;cursor:pointer}
+.item:hover{background:#132243}
+.badge{display:inline-block;padding:2px 8px;border-radius:30px;font-size:11px;background:#16233b;color:#bcd}
+.center{display:flex;align-items:center;justify-content:center}
+.kv{display:flex;gap:10px;align-items:center}
+.kv>div{flex:1}
+hr{border:none;border-top:1px solid #1b2438;margin:16px 0}
+.preview{background:#0c1426;border:1px solid #1b2438;border-radius:10px;padding:10px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="brandTitle">Studio RS TV — Painel</h1>
+
+  <!-- LOGIN -->
+  <div class="card" id="cardLogin">
+    <div class="row">
+      <div class="col">
+        <label>Senha de administrador</label>
+        <input id="inPwd" type="password" placeholder="admin123"/>
+      </div>
+      <div class="col" style="max-width:220px">
+        <label>&nbsp;</label>
+        <button id="btLogin">Entrar</button>
+      </div>
+    </div>
+    <div class="small">Dica: senha padrão <b>admin123</b> (troca no Render via variável
+      <code>ADMIN_PASSWORD</code>).</div>
+  </div>
+
+  <!-- CONTEÚDO DO PAINEL -->
+  <div id="app" class="hidden">
+
+    <!-- Terminais -->
+    <div class="card">
+      <h3>Terminais</h3>
+      <div class="row">
+        <div class="col">
+          <label>Código</label>
+          <input id="tCode" placeholder="BOX-0001"/>
+        </div>
+        <div class="col">
+          <label>Nome visível</label>
+          <input id="tName" placeholder="AÇOUGUE 02"/>
+        </div>
+        <div class="col">
+          <label>Grupo (opcional)</label>
+          <input id="tGroup" placeholder="MATRIZ"/>
+        </div>
+        <div class="col" style="max-width:220px">
+          <label>&nbsp;</label>
+          <button id="btCreate">Criar</button>
+        </div>
+      </div>
+      <hr>
+      <div class="row">
+        <div class="col">
+          <label>Todos os terminais</label>
+          <div id="listTerms" class="list"></div>
+          <div class="small">Clique em um terminal abaixo para carregar a playlist.</div>
+        </div>
+        <div class="col">
+          <label>Uploads (clique para inserir na playlist)</label>
+          <div id="listUploads" class="list"></div>
+          <div class="kv">
+            <div><input id="filePick" type="file"/></div>
+            <div style="max-width:200px"><button id="btSendFile">Enviar</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Playlist -->
+    <div class="card">
+      <h3>Playlist do terminal selecionado</h3>
+      <div class="row">
+        <div class="col" style="max-width:220px">
+          <label>Tipo</label>
+          <select id="selType">
+            <option value="video">Vídeo</option>
+            <option value="image">Imagem</option>
+            <option value="rss">RSS</option>
+          </select>
+        </div>
+        <div class="col">
+          <label>URL / arquivo</label>
+          <input id="inURL" placeholder="/uploads/arquivo.mp4 ou https://..."/>
+        </div>
+        <div class="col" style="max-width:220px">
+          <label>Duração (s) — imagem/RSS</label>
+          <input id="inDur" type="number" min="1" value="10"/>
+        </div>
+        <div class="col" style="max-width:220px">
+          <label>&nbsp;</label>
+          <button id="btAdd">Adicionar</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <label>Itens</label>
+          <div id="listPL" class="list"></div>
+          <div class="center" style="gap:12px;margin-top:10px">
+            <button id="btSave" style="max-width:220px;width:220px">Salvar Playlist</button>
+            <div class="small" id="saveMsg"></div>
+          </div>
+        </div>
+        <div class="col">
+          <label>Preview rápido</label>
+          <div class="preview">
+            <div id="pvImg" class="hidden"><img id="pvImgTag" style="max-width:100%"/></div>
+            <div id="pvVid" class="hidden"><video id="pvVidTag" style="max-width:100%" controls></video></div>
+            <div id="pvRss" class="hidden small">Prévia RSS: <span id="pvRssTxt"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Marca (opcional para você) -->
+    <div class="card">
+      <h3>Marca (opcional)</h3>
+      <div class="row">
+        <div class="col">
+          <label>Nome</label>
+          <input id="brandName" value="Studio RS TV"/>
+        </div>
+        <div class="col" style="max-width:220px">
+          <label>Cor primária</label>
+          <input id="brandColor" value="#0d1b2a"/>
+        </div>
+        <div class="col">
+          <label>URL do logo (PNG com fundo branco, opcional)</label>
+          <input id="brandLogo" placeholder="https://.../logo.png"/>
+        </div>
+        <div class="col" style="max-width:220px">
+          <label>&nbsp;</label>
+          <button id="btBrand">Salvar marca</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const api = (m,u,b)=>fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
+
+let currentCode = null;     // terminal selecionado
+let playlist    = [];       // playlist em edição
+
+// ---- Login
+$("#btLogin").onclick = async ()=>{
+  const r = await api("POST","/api/v1/login",{password: $("#inPwd").value.trim()});
+  const j = await r.json();
+  if(!j.ok){ alert(j.error||"Erro de login"); return; }
+  $("#cardLogin").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+  await refreshBrand(j.brand);
+  await refreshTerms();
+  await refreshUploads();
+};
+
+// marca
+async function refreshBrand(br){
+  if(!br){
+    const r = await fetch("/api/v1/admin/brand");
+    const j = await r.json();
+    br = j.brand;
+  }
+  $("#brandTitle").innerText = (br?.name||"Studio RS TV")+" — Painel";
+  $("#brandName").value = br?.name||"Studio RS TV";
+  $("#brandColor").value = br?.primary_color||"#0d1b2a";
+  $("#brandLogo").value  = br?.logo||"";
+}
+$("#btBrand").onclick = async ()=>{
+  const body = {name: $("#brandName").value, primary_color: $("#brandColor").value, logo: $("#brandLogo").value||null};
+  const r = await api("POST","/api/v1/admin/brand", body);
+  const j = await r.json();
+  if(j.ok){ await refreshBrand(j.brand); alert("Marca salva."); } else alert("Erro ao salvar marca");
+};
+
+// ---- Terminais
+async function refreshTerms(){
+  const r= await fetch("/api/v1/admin/terminals");
+  const j= await r.json();
+  const box = $("#listTerms"); box.innerHTML="";
+  (j.terminals||[]).sort((a,b)=>a.code.localeCompare(b.code)).forEach(t=>{
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `<div class="badge">${t.code}</div> <div>${t.name||""}</div>
+                     <div class="small" style="margin-left:auto">${t.items} itens</div>`;
+    div.onclick = ()=>selectTerminal(t.code, t.name);
+    box.append(div);
+  });
+}
+$("#btCreate").onclick = async ()=>{
+  const body = {code: $("#tCode").value.trim(), name: $("#tName").value.trim(), group: $("#tGroup").value.trim()};
+  const r = await api("POST","/api/v1/admin/terminals", body);
+  const j = await r.json();
+  if(!j.ok){ alert(j.error||"Erro ao criar"); return; }
+  await refreshTerms();
+  alert("Criado com sucesso.");
+};
+
+// ---- Uploads
+async function refreshUploads(){
+  const r= await fetch("/api/v1/uploads");
+  const j= await r.json();
+  const box=$("#listUploads"); box.innerHTML="";
+  (j.files||[]).reverse().forEach(u=>{
+    const ext = u.split(".").pop().toLowerCase();
+    const kind = (["mp4","mov","mkv","webm"].includes(ext) ? "video" :
+                  ["png","jpg","jpeg","webp"].includes(ext) ? "image":"file");
+    const it  = document.createElement("div");
+    it.className="item";
+    it.innerHTML=`<div class="badge">${kind}</div><div class="small">${u}</div>`;
+    it.onclick=()=>{
+      $("#inURL").value = u;
+      if(kind==="image"){ $("#selType").value="image"; showPreview("image",u); }
+      if(kind==="video"){ $("#selType").value="video"; showPreview("video",u); }
+    };
+    box.append(it);
+  });
+}
+$("#btSendFile").onclick = async ()=>{
+  const f = $("#filePick").files[0];
+  if(!f){ alert("Escolha um arquivo"); return; }
+  const fd = new FormData(); fd.append("file", f);
+  const r  = await fetch("/api/v1/upload", {method:"POST", body: fd});
+  const j  = await r.json();
+  if(!j.ok){ alert("Falha no upload"); return; }
+  $("#filePick").value="";
+  await refreshUploads();
+  $("#inURL").value = j.url;
+};
+
+// ---- Playlist
+async function selectTerminal(code, name){
+  currentCode = code;
+  const r = await fetch(`/api/v1/admin/playlist?code=${encodeURIComponent(code)}`);
+  const j = await r.json();
+  playlist = j.items || [];
+  drawPL();
+  $("#saveMsg").innerText = `Editando: ${code} • ${name}`;
+}
+function drawPL(){
+  const box = $("#listPL"); box.innerHTML="";
+  playlist.forEach((it,idx)=>{
+    const line = document.createElement("div");
+    line.className="item";
+    const dur  = (it.type==="video") ? "" : ` • ${it.duration||10}s`;
+    line.innerHTML = `<div class="badge">${it.type}</div><div class="small" style="flex:1">${it.url}${dur}</div>
+                      <button style="max-width:90px" onclick="rmItem(${idx})">remover</button>`;
+    line.onclick = (e)=>{
+      // preenche preview sem apagar clique do botão
+      if(e.target.tagName==="BUTTON") return;
+      $("#selType").value = it.type;
+      $("#inURL").value  = it.url;
+      $("#inDur").value  = it.duration||10;
+      showPreview(it.type, it.url);
+    };
+    box.append(line);
+  });
+}
+window.rmItem = (idx)=>{ playlist.splice(idx,1); drawPL(); };
+
+$("#btAdd").onclick = ()=>{
+  const type = $("#selType").value;
+  const url  = $("#inURL").value.trim();
+  let  dur   = parseInt($("#inDur").value||"10",10);
+  if(!url){ alert("Informe a URL ou escolha um upload"); return; }
+  if(type!=="video"){ dur = Math.max(dur,1); }
+  playlist.push(type==="video"? {type, url}:{type, url, duration:dur});
+  drawPL();
+  showPreview(type,url);
+};
+$("#btSave").onclick = async ()=>{
+  if(!currentCode){ alert("Selecione um terminal na lista à esquerda."); return; }
+  const r = await api("POST","/api/v1/admin/playlist", {code: currentCode, items: playlist});
+  const j = await r.json();
+  if(j.ok){ $("#saveMsg").innerText = "Playlist salva. O player atualiza no próximo poll."; }
+  else alert(j.error||"Erro ao salvar");
+};
+
+// ---- Preview
+function showPreview(type, url){
+  $("#pvImg").classList.add("hidden");
+  $("#pvVid").classList.add("hidden");
+  $("#pvRss").classList.add("hidden");
+  if(type==="image"){ $("#pvImgTag").src=url; $("#pvImg").classList.remove("hidden"); }
+  else if(type==="video"){ $("#pvVidTag").src=url; $("#pvVid").classList.remove("hidden"); }
+  else{ $("#pvRssTxt").innerText=url; $("#pvRss").classList.remove("hidden"); }
+}
+</script>
+</body>
+</html>
