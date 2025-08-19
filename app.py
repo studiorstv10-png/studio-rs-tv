@@ -7,7 +7,7 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory, render_template_string, abort
 
 # ──────────────────────────────────────────────────────────────────────────────
-# CONFIGURAÇÃO
+# CONFIG
 # ──────────────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent.resolve()
 DATA_DIR = BASE_DIR / "data"
@@ -27,7 +27,6 @@ BRAND = {
 DEFAULT_POLL_SECONDS = 60
 DEFAULT_LAYOUT = "16:9"
 
-# Arquivos JSON do "banco"
 PATH_TERMINALS = DATA_DIR / "terminals.json"   # {code: {...}}
 PATH_PLAYLISTS = DATA_DIR / "playlists.json"   # {code: [items]}
 PATH_UPLOADS   = DATA_DIR / "uploads.json"     # {"items":[...]}
@@ -51,9 +50,8 @@ def now_utc_iso():
     return datetime.now(timezone.utc).isoformat()
 
 def sanitize_filename(name: str) -> str:
-    # remove path e caracteres ruins
     base = Path(name).name
-    base = re.sub(r"[^\w\-. ]+", "", base, flags=re.UNICODE)  # mantém letras, números, _, -, ., espaço
+    base = re.sub(r"[^\w\-. ]+", "", base, flags=re.UNICODE)
     base = base.strip().replace(" ", "_")
     if not base:
         base = "arquivo"
@@ -64,7 +62,6 @@ def sanitize_filename(name: str) -> str:
 # ──────────────────────────────────────────────────────────────────────────────
 app = Flask(__name__, static_url_path="/static", static_folder="static")
 
-# Painel simplificado (sem editor de marca)
 INDEX_HTML = """
 <!doctype html>
 <html lang="pt-br">
@@ -87,6 +84,12 @@ INDEX_HTML = """
     .ok{color:#4ade80}.warn{color:#fbbf24}.err{color:#f87171}
     small{opacity:.7}
     .pill{padding:4px 8px;border-radius:999px;background:#13203d;border:1px solid #223152}
+    .muted{opacity:.7}
+    .preview{background:#0b1220;border:1px dashed #223152;border-radius:10px;padding:12px}
+    .preview video,.preview img{max-width:100%;border-radius:8px}
+    .uploads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+    .upload-item{background:#0b1220;border:1px solid #1e2a44;border-radius:10px;padding:8px}
+    .upload-item button{margin-left:8px}
   </style>
 </head>
 <body>
@@ -97,6 +100,7 @@ INDEX_HTML = """
 
 <div class="wrap">
 
+  <!-- Terminais -->
   <div class="card">
     <h2>Terminais</h2>
     <div class="row">
@@ -108,31 +112,56 @@ INDEX_HTML = """
     <div style="margin-top:12px" class="list" id="terms"></div>
   </div>
 
+  <!-- Uploads -->
   <div class="card">
     <h2>Uploads</h2>
     <div class="row">
       <input id="up_file" type="file" multiple>
       <button class="btn" onclick="doUpload()">Enviar</button>
     </div>
-    <div style="margin-top:12px" class="list" id="uploads"></div>
+    <div style="margin-top:12px">
+      <div class="row">
+        <select id="u_filter">
+          <option value="">Todos</option>
+          <option value="video">Vídeos</option>
+          <option value="image">Imagens</option>
+        </select>
+        <input id="u_search" placeholder="Buscar por nome (display)">
+        <button class="btn" onclick="refreshUploads()">Filtrar</button>
+      </div>
+    </div>
+    <div style="margin-top:12px" id="uploads" class="uploads-grid"></div>
   </div>
 
+  <!-- Playlist -->
   <div class="card">
     <h2>Playlist</h2>
     <div class="row">
       <select id="p_term"></select>
       <button class="btn" onclick="loadPlaylist()">Carregar</button>
     </div>
+
     <div class="row" style="margin-top:12px">
       <select id="p_type">
         <option value="video">Vídeo</option>
         <option value="image">Imagem</option>
         <option value="rss">RSS</option>
       </select>
+
+      <!-- Picker de uploads -->
+      <select id="p_pick">
+        <option value="">Escolher dos uploads…</option>
+      </select>
+
       <input id="p_url" placeholder="URL ou /uploads/arquivo.ext">
       <input id="p_dur" placeholder="Duração (s) p/ imagem/RSS">
       <button class="btn" onclick="addItem()">Adicionar</button>
     </div>
+
+    <div class="preview" id="preview" style="margin-top:12px">
+      <span class="muted">Pré-visualização aparecerá aqui…</span>
+    </div>
+
     <div style="margin-top:12px" class="list" id="plist"></div>
     <div style="margin-top:12px">
       <button class="btn" onclick="savePlaylist()">Salvar Playlist</button>
@@ -144,7 +173,7 @@ INDEX_HTML = """
 <script>
 const ADMIN_PASS = "{{ admin }}";
 
-// utils
+// helpers
 const $ = (q)=>document.querySelector(q);
 const fmt = (n)=> new Intl.NumberFormat('pt-BR').format(n);
 
@@ -154,6 +183,7 @@ async function api(path, opt={}){
   return r.json();
 }
 
+/* ───────────── Terminais ───────────── */
 async function refreshTerms(){
   const {items}= await api('/api/v1/admin/terminals');
   const el = $('#terms'); el.innerHTML = '';
@@ -175,12 +205,57 @@ async function createTerminal(){
   alert('Criado com sucesso.');
 }
 
+/* ───────────── Uploads + Picker ───────────── */
+let uploadsCache = [];
+
+function guessTypeFromExt(url){
+  const u = url.toLowerCase();
+  if(u.match(/\.(mp4|mov|mkv|webm)$/)) return 'video';
+  if(u.match(/\.(png|jpg|jpeg|gif|webp)$/)) return 'image';
+  return 'file';
+}
+
+function renderUploadsToGrid(items){
+  const el = $('#uploads'); el.innerHTML='';
+  items.forEach(u=>{
+    const open = `<a class="btn" href="${u.path}" target="_blank" style="text-decoration:none">abrir</a>`;
+    const use  = `<button class="btn" onclick="useUpload('${u.path}','${u.type}')">usar</button>`;
+    el.innerHTML += `
+      <div class="upload-item">
+        <div><b>${u.display_name}</b> <small class="muted">(${u.type}, ${fmt(u.size)} bytes)</small></div>
+        <div><code>${u.path}</code></div>
+        <div style="margin-top:6px">${open} ${use}</div>
+      </div>
+    `;
+  });
+}
+
+function feedPicker(items){
+  const pick=$('#p_pick');
+  pick.innerHTML = '<option value="">Escolher dos uploads…</option>';
+  items.forEach(u=>{
+    pick.innerHTML += `<option value="${u.path}" data-type="${u.type}">${u.display_name} — ${u.path}</option>`;
+  });
+}
+
 async function refreshUploads(){
   const {items} = await api('/api/v1/admin/uploads');
-  const el = $('#uploads'); el.innerHTML='';
-  items.slice().reverse().forEach(u=>{
-    el.innerHTML += `• ${u.display_name} <small>(${u.type}, ${fmt(u.size)} bytes)</small> — <code>${u.path}</code><br>`;
-  });
+  uploadsCache = items || [];
+  // filtro
+  const ft = $('#u_filter').value;
+  const q = ($('#u_search').value||'').toLowerCase().trim();
+  let filtered = uploadsCache.slice();
+  if(ft) filtered = filtered.filter(x=>x.type===ft);
+  if(q)  filtered = filtered.filter(x=> (x.display_name||'').toLowerCase().includes(q));
+  renderUploadsToGrid(filtered);
+  // picker mostra só imagens e vídeos
+  feedPicker(uploadsCache.filter(x=>x.type==='image'||x.type==='video'));
+}
+
+function useUpload(path, type){
+  $('#p_url').value = path;
+  if(type==='image'||type==='video') $('#p_type').value = type;
+  showPreview(path, type||guessTypeFromExt(path));
 }
 
 async function doUpload(){
@@ -194,32 +269,49 @@ async function doUpload(){
   alert('Enviado.');
 }
 
+/* ───────────── Playlist + Preview ───────────── */
 let currentPlaylist = [];
+
 async function loadPlaylist(){
   const term=$('#p_term').value;
   const {items}= await api(`/api/v1/admin/playlist/${encodeURIComponent(term)}`);
   currentPlaylist = items || [];
   renderPlaylist();
 }
+
 function renderPlaylist(){
   const el=$('#plist'); el.innerHTML='';
   if(!currentPlaylist.length){el.innerHTML='<i>vazia</i>';return;}
   currentPlaylist.forEach((it,i)=>{
-    el.innerHTML += `${i+1}. [${it.type}] ${it.url||it.path} ${it.duration?('('+it.duration+'s)'):''} <button onclick="rem(${i})">remover</button><br>`;
+    const label = it.path || it.url || '';
+    el.innerHTML += `${i+1}. [${it.type}] ${label} ${it.duration?('('+it.duration+'s)'):''} <button onclick="rem(${i})">remover</button> <button onclick="showPreview('${label}','${it.type}')">ver</button><br>`;
   });
 }
+
 function rem(i){ currentPlaylist.splice(i,1); renderPlaylist(); }
 
 function addItem(){
-  const type=$('#p_type').value;
-  const url=$('#p_url').value.trim();
-  const duration=parseInt($('#p_dur').value.trim()||'0',10)||0;
-  if(!url) return alert('Informe URL ou /uploads/arquivo.ext');
+  // Prioridade: se escolheu do picker, usa o picker.
+  const pick=$('#p_pick');
+  const pickedPath = pick.value;
+  let type = $('#p_type').value;
+  let url = $('#p_url').value.trim();
+  let duration=parseInt($('#p_dur').value.trim()||'0',10)||0;
+
+  if(pickedPath){
+    url = pickedPath;
+    const t = pick.selectedOptions[0]?.dataset?.type;
+    if(t==='image'||t==='video') type=t;
+  }
+  if(!url) return alert('Informe ou escolha um arquivo/URL.');
+
   const it={type};
   if(url.startsWith('/uploads/')) it.path=url; else it.url=url;
-  if(type!=='video') it.duration = duration||10;
+  if(type!=='video'){ it.duration = duration||10; }
   currentPlaylist.push(it);
-  $('#p_url').value=''; $('#p_dur').value='';
+
+  // limpar inputs
+  $('#p_url').value=''; $('#p_dur').value=''; $('#p_pick').value='';
   renderPlaylist();
 }
 
@@ -228,6 +320,39 @@ async function savePlaylist(){
   await api(`/api/v1/admin/playlist/${encodeURIComponent(term)}`,{method:'POST', body:JSON.stringify({items: currentPlaylist})});
   alert('Playlist salva.');
 }
+
+/* Preview */
+function showPreview(url, type){
+  const box = $('#preview');
+  box.innerHTML='';
+  if(!type) type = guessTypeFromExt(url);
+
+  if(type==='image'){
+    box.innerHTML = `<img alt="preview" src="${url}">`;
+  }else if(type==='video'){
+    box.innerHTML = `<video src="${url}" controls playsinline></video>`;
+  }else if(type==='rss'){
+    box.innerHTML = `<div class="muted">Prévia de RSS não renderizada aqui. <a class="btn" href="${url}" target="_blank" style="text-decoration:none">abrir</a></div>`;
+  }else{
+    box.innerHTML = `<div class="muted">Arquivo: <code>${url}</code> — <a class="btn" href="${url}" target="_blank" style="text-decoration:none">abrir</a></div>`;
+  }
+}
+
+/* Eventos de UI */
+$('#p_pick').addEventListener('change', (e)=>{
+  const val = e.target.value;
+  if(!val) return;
+  const type = e.target.selectedOptions[0]?.dataset?.type || '';
+  $('#p_url').value = val;
+  if(type) $('#p_type').value = type;
+  showPreview(val, type);
+});
+
+$('#p_url').addEventListener('input', (e)=>{
+  const val = e.target.value.trim();
+  if(!val) { $('#preview').innerHTML='<span class="muted">Pré-visualização aparecerá aqui…</span>'; return; }
+  showPreview(val, null);
+});
 
 (async function init(){
   await refreshTerms();
@@ -239,7 +364,7 @@ async function savePlaylist(){
 """
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ROTAS DO PAINEL
+# AUTENTICAÇÃO ADMIN
 # ──────────────────────────────────────────────────────────────────────────────
 def _check_admin():
     if request.headers.get("x-admin-pass") != ADMIN_PASSWORD:
@@ -333,7 +458,6 @@ def admin_upload():
 
 @app.get("/uploads/<path:subpath>")
 def serve_upload(subpath):
-    # segurança simples: só servir dentro da pasta uploads
     full = (UPLOADS_DIR / subpath).resolve()
     if not str(full).startswith(str(UPLOADS_DIR)):
         abort(404)
@@ -349,7 +473,6 @@ def admin_set_playlist(code):
     _check_admin()
     data = request.get_json(force=True)
     items = data.get("items") or []
-    # validação simples
     cleaned = []
     for it in items:
         t = it.get("type")
@@ -376,7 +499,6 @@ def player_config():
     if not t:
         return jsonify({"status":"not_found"}), 404
 
-    # licença / trial
     today = datetime.now(timezone.utc).date()
     trial_until = datetime.fromisoformat(t.get("trial_until")+"T00:00:00+00:00").date() if t.get("trial_until") else None
     status = "ok"
@@ -401,7 +523,6 @@ def ping():
     return jsonify({"ok": True, "ts": now_utc_iso()})
 
 # ──────────────────────────────────────────────────────────────────────────────
-
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
     app.run(host="0.0.0.0", port=port)
