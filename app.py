@@ -4,19 +4,15 @@ from pathlib import Path
 from datetime import datetime
 from mimetypes import guess_type
 
-from flask import (
-    Flask, render_template, jsonify, request
-)
+from flask import Flask, render_template, jsonify, request
 from werkzeug.utils import secure_filename
 
-# ------------------------------------------------------------------
-# Pastas e arquivos
-# ------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 PLAYLISTS_DIR = DATA_DIR / "playlists"
 STATUS_FILE = DATA_DIR / "status.json"
 TERMINALS_FILE = DATA_DIR / "terminals.json"
+CAMPAIGNS_FILE = DATA_DIR / "campaigns.json"
 
 STATIC_DIR = BASE_DIR / "static"
 UPLOAD_DIR = STATIC_DIR / "uploads"
@@ -25,32 +21,18 @@ for p in (DATA_DIR, PLAYLISTS_DIR, UPLOAD_DIR):
     p.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTS = {
-    ".mp4", ".webm", ".mkv", ".mov",      # vídeo
-    ".jpg", ".jpeg", ".png", ".gif",      # imagem
-    ".xml"                                # rss (opcional)
+    ".mp4", ".webm", ".mkv", ".mov",       # vídeo
+    ".jpg", ".jpeg", ".png", ".gif",       # imagem
+    ".xml"                                 # rss
 }
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
 
-# ------------------------------------------------------------------
-# Branding
-# ------------------------------------------------------------------
-def get_branding():
-    return {
-        "name": os.getenv("BRAND_NAME", "Studio RS TV"),
-        "primary_color": os.getenv("BRAND_PRIMARY", "#0d1b2a"),
-        "logo": os.getenv("BRAND_LOGO", "/static/logo.png"),
-        "support_wa": os.getenv("SUPPORT_WA", "https://wa.me/5512999999999"),
-    }
+# ------------------------ utils ------------------------
 
-
-# ------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------
 def now_iso():
     return datetime.utcnow().isoformat() + "Z"
-
 
 def read_json(path: Path, default):
     try:
@@ -61,13 +43,11 @@ def read_json(path: Path, default):
         pass
     return default
 
-
 def write_json(path: Path, data):
     tmp = path.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     tmp.replace(path)
-
 
 def _file_type_by_ext(ext: str) -> str:
     ext = (ext or "").lower()
@@ -79,35 +59,35 @@ def _file_type_by_ext(ext: str) -> str:
         return "rss"
     mime, _ = guess_type("x" + ext)
     if mime:
-        if mime.startswith("video/"):
-            return "video"
-        if mime.startswith("image/"):
-            return "image"
+        if mime.startswith("video/"): return "video"
+        if mime.startswith("image/"): return "image"
     return "file"
 
+def get_branding():
+    return {
+        "name": os.getenv("BRAND_NAME", "Studio RS TV"),
+        "primary_color": os.getenv("BRAND_PRIMARY", "#0d1b2a"),
+        "logo": os.getenv("BRAND_LOGO", "/static/logo.png"),
+        "support_wa": os.getenv("SUPPORT_WA", "https://wa.me/5512999999999"),
+    }
 
-# ------------------------------------------------------------------
-# Páginas
-# ------------------------------------------------------------------
+# ------------------------ pages ------------------------
+
 @app.route("/")
 def index():
     return render_template("index.html", brand=get_branding())
 
+# ------------------------ diag / config ----------------
 
-# ------------------------------------------------------------------
-# Diagnóstico / Config
-# ------------------------------------------------------------------
 @app.route("/api/v1/ping")
 def ping():
     return jsonify({"ok": True, "ts": now_iso()})
-
 
 @app.route("/api/v1/config")
 def config():
     code = request.args.get("code", "").strip()
     pfile = PLAYLISTS_DIR / f"{code}.json" if code else None
     playlist_items = read_json(pfile, []) if pfile else []
-
     return jsonify({
         "ok": True,
         "code": code or "DEMO",
@@ -116,14 +96,11 @@ def config():
         "updated_at": now_iso(),
     })
 
+# ------------------------ terminals --------------------
 
-# ------------------------------------------------------------------
-# Terminais
-# ------------------------------------------------------------------
 @app.route("/api/v1/terminals", methods=["GET", "POST"])
 def terminals():
     terms = read_json(TERMINALS_FILE, [])
-
     if request.method == "GET":
         return jsonify({"ok": True, "items": terms})
 
@@ -137,13 +114,14 @@ def terminals():
         return jsonify({"ok": False, "error": "Informe pelo menos Nome ou Código."}), 400
 
     key = code or name
-    # atualiza se já existir com a mesma chave; senão cria
     for t in terms:
         if (t.get("code") or t.get("name")) == key:
-            t.update({"name": name or t.get("name"),
-                      "code": code or t.get("code"),
-                      "client": client,
-                      "group": group})
+            t.update({
+                "name": name or t.get("name"),
+                "code": code or t.get("code"),
+                "client": client,
+                "group": group
+            })
             write_json(TERMINALS_FILE, terms)
             return jsonify({"ok": True, "items": terms})
 
@@ -151,10 +129,8 @@ def terminals():
     write_json(TERMINALS_FILE, terms)
     return jsonify({"ok": True, "items": terms})
 
+# ------------------------ uploads ----------------------
 
-# ------------------------------------------------------------------
-# Uploads
-# ------------------------------------------------------------------
 @app.route("/api/v1/uploads", methods=["GET"])
 def list_uploads():
     items = []
@@ -168,12 +144,10 @@ def list_uploads():
             })
     return jsonify({"ok": True, "items": items})
 
-
 @app.route("/api/v1/upload", methods=["POST"])
 def upload():
     if "files" not in request.files:
-        return jsonify({"ok": False, "error": "Nenhum arquivo enviado (campo 'files')."}), 400
-
+        return jsonify({"ok": False, "error": "Nenhum arquivo (files)."}), 400
     files = request.files.getlist("files")
     saved = []
     for f in files:
@@ -182,7 +156,6 @@ def upload():
         ext = Path(f.filename).suffix.lower()
         if ext not in ALLOWED_EXTS:
             return jsonify({"ok": False, "error": f"Extensão não permitida: {ext}"}), 400
-
         safe = secure_filename(f.filename)
         ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
         final_name = f"{ts}-{safe}"
@@ -195,52 +168,116 @@ def upload():
         })
     return jsonify({"ok": True, "items": saved})
 
+# ------------------------ playlists (legacy por terminal) ----
 
-# ------------------------------------------------------------------
-# Playlists
-# ------------------------------------------------------------------
 @app.route("/api/v1/playlists/<terminal>", methods=["GET", "POST"])
 def playlists(terminal: str):
     terminal = terminal.strip()
     if not terminal:
         return jsonify({"ok": False, "error": "Terminal inválido."}), 400
-
     pfile = PLAYLISTS_DIR / f"{terminal}.json"
-
     if request.method == "GET":
         items = read_json(pfile, [])
         return jsonify({"ok": True, "items": items})
-
     payload = request.get_json(force=True, silent=True) or {}
     items = payload.get("items", [])
     if not isinstance(items, list):
-        return jsonify({"ok": False, "error": "Formato inválido (items)."}), 400
-
+        return jsonify({"ok": False, "error": "items inválido."}), 400
     norm = []
     for it in items:
         t = (it.get("type") or "").lower()
         u = (it.get("url") or "").strip()
-        if not t or not u:
+        if not t or not u: 
             continue
         d = int(it.get("duration", 0)) if t in ("image", "rss") else 0
         norm.append({"type": t, "url": u, "duration": d})
-
     write_json(pfile, norm)
     return jsonify({"ok": True, "items": norm})
 
+# ------------------------ CAMPANHAS (playlist nome + múltiplos alvos) ----
 
-# ------------------------------------------------------------------
-# Monitoramento (Heartbeat)
-# ------------------------------------------------------------------
+def _load_campaigns():
+    return read_json(CAMPAIGNS_FILE, {"campaigns": []})
+
+def _save_campaigns(data):
+    write_json(CAMPAIGNS_FILE, data)
+
+@app.route("/api/v1/campaigns", methods=["GET"])
+def campaigns_list():
+    return jsonify(_load_campaigns())
+
+@app.route("/api/v1/campaigns/save", methods=["POST"])
+def campaigns_save():
+    """
+    body:
+    {
+      "name": "Campanha Setembro",
+      "items": [ {type,url,duration?}, ... ],
+      "targets": ["BOX-001","BOX-002"]
+    }
+    """
+    payload = request.get_json(force=True, silent=True) or {}
+    name = (payload.get("name") or "").strip()
+    items = payload.get("items", [])
+    targets = payload.get("targets", [])
+    if not name:
+        return jsonify({"ok": False, "error": "Informe o nome da campanha."}), 400
+    if not isinstance(items, list) or not items:
+        return jsonify({"ok": False, "error": "items vazio/ inválido."}), 400
+    if not isinstance(targets, list) or not targets:
+        return jsonify({"ok": False, "error": "Selecione ao menos um terminal."}), 400
+
+    # normaliza itens
+    norm = []
+    for it in items:
+        t = (it.get("type") or "").lower()
+        u = (it.get("url") or "").strip()
+        if not t or not u: 
+            continue
+        d = int(it.get("duration", 0)) if t in ("image", "rss") else 0
+        norm.append({"type": t, "url": u, "duration": d})
+    if not norm:
+        return jsonify({"ok": False, "error": "items inválidos."}), 400
+
+    camp = _load_campaigns()
+    now = now_iso()
+
+    # atualiza se mesmo nome, senão adiciona
+    updated = False
+    for c in camp["campaigns"]:
+        if c.get("name", "").strip().lower() == name.lower():
+            c["items"] = norm
+            c["targets"] = targets
+            c["updated_at"] = now
+            updated = True
+            break
+    if not updated:
+        camp["campaigns"].append({
+            "id": f"cmp_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+            "name": name,
+            "items": norm,
+            "targets": targets,
+            "updated_at": now
+        })
+    _save_campaigns(camp)
+
+    # Grava playlist física por terminal (compatibilidade com o player)
+    for t in targets:
+        write_json(PLAYLISTS_DIR / f"{t}.json", norm)
+
+    return jsonify({"ok": True, "campaign": name, "targets": targets})
+
+# ------------------------ status / heartbeat ----------------------
+
 @app.route("/api/v1/heartbeat", methods=["POST"])
 def heartbeat():
     """
-    Player envia:
+    body:
     {
       "code": "BOX-001",
       "player": "android-tv",
       "version": "1.0.0",
-      "playing": {"type":"video","url": "...", "index": 1}
+      "playing": {"type":"video","url":"...", "index":1}
     }
     """
     payload = request.get_json(force=True, silent=True) or {}
@@ -259,6 +296,23 @@ def heartbeat():
     write_json(STATUS_FILE, st)
     return jsonify({"ok": True})
 
+def _campaign_for_terminal(code: str):
+    camp = _load_campaigns()
+    best_name = None
+    best_ts = None
+    for c in camp.get("campaigns", []):
+        if code in (c.get("targets") or []):
+            ts = c.get("updated_at")
+            dt = None
+            if ts:
+                try:
+                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                except Exception:
+                    dt = None
+            if best_ts is None or (dt and dt > best_ts):
+                best_ts = dt
+                best_name = c.get("name")
+    return best_name
 
 @app.route("/api/v1/status", methods=["GET"])
 def status_list():
@@ -275,10 +329,9 @@ def status_list():
         online = False
         if last_seen:
             try:
-                # parse iso (com Z)
-                ts = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
-                delta = (now - ts.replace(tzinfo=None)).total_seconds()
-                online = (delta <= (refresh * 120))  # 2x janela
+                dt = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
+                delta = (now - dt.replace(tzinfo=None)).total_seconds()
+                online = (delta <= (refresh * 120))  # 2× janela
             except Exception:
                 pass
 
@@ -287,6 +340,7 @@ def status_list():
             "code": t.get("code"),
             "client": t.get("client"),
             "group": t.get("group"),
+            "campaign": _campaign_for_terminal(key),
             "online": online,
             "last_seen": last_seen,
             "playing": s.get("playing"),
@@ -296,11 +350,9 @@ def status_list():
         })
     return jsonify({"ok": True, "items": items})
 
-
 @app.route("/healthz")
 def healthz():
     return "ok", 200
-
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
