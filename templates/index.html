@@ -14,7 +14,7 @@
     main{ max-width:1200px; margin:0 auto; padding:20px }
     .grid{ display:grid; grid-template-columns:repeat(12,1fr); gap:16px }
     .card{ grid-column:span 12; background:#11161c; border:1px solid #1b2530; border-radius:12px; padding:16px }
-    @media (min-width:900px){ .col-4{grid-column:span 4} .col-6{grid-column:span 6} .col-8{grid-column:span 8} .col-12{grid-column:span 12} }
+    @media (min-width:900px){ .col-4{grid-column:span 4} .col-6{grid-column:span 6} .col-12{grid-column:span 12} }
     h2{ margin:0 0 10px; font-size:16px; font-weight:800 }
     label{ display:block; font-size:13px; margin:10px 0 6px; color:#9fb3c8 }
     input[type="text"],input[type="url"],select,textarea{
@@ -52,7 +52,7 @@
 <main>
   <div class="grid">
 
-    <!-- Criar Terminal (unitário) -->
+    <!-- Terminais (unitário) + Parear código -->
     <section class="card col-6">
       <h2>Terminais (unitário)</h2>
       <div class="row">
@@ -65,6 +65,15 @@
       </div>
       <button class="btn primary" onclick="saveTerminal()">Criar / Atualizar</button>
       <div id="tmsg" class="muted" style="margin-top:8px"></div>
+
+      <hr style="border:none;border-top:1px solid #1b2530;margin:16px 0">
+      <h2>Parear Box (código mostrado na TV)</h2>
+      <div class="row">
+        <div><label>Código de pareamento</label><input id="pairCode" placeholder="ABC123"></div>
+        <div><label>Terminal</label><select id="pairTerminal"></select></div>
+      </div>
+      <button class="btn" onclick="pairClaim()">Vincular</button>
+      <div id="pairMsg" class="muted" style="margin-top:8px"></div>
     </section>
 
     <!-- Criar em Lote -->
@@ -72,7 +81,7 @@
       <h2>Criação em Lote por Cliente</h2>
       <div class="row">
         <div><label>Cliente</label><input id="bulkClient" placeholder="João"></div>
-        <div><label>Base do nome</label><input id="bulkBase" placeholder="BOX"></div>
+        <div><label>Base do nome</label><input id="bulkBase" placeholder="BOX" value="BOX"></div>
         <div><label>Quantidade</label><input id="bulkCount" placeholder="10" value="5"></div>
       </div>
       <div class="row">
@@ -181,6 +190,7 @@
     }).join('');
     $('plTerminal').innerHTML=opts;
     $('plTargets').innerHTML=opts;
+    $('pairTerminal').innerHTML=opts;
   }
   async function saveTerminal(){
     const payload={
@@ -268,21 +278,20 @@
     const r=await fetch('/api/v1/campaigns/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,items,targets:sel})});
     const j=await r.json(); if(j.ok){ alert('Campanha salva!'); renderClients(); } else { alert(j.error||'Erro'); }
   }
-
-  // acelerar edição: carregar terminal nas seleções
   function focusTerminal(code){
-    // pré-seleciona alvo único
     [...$('plTargets').options].forEach(o=>o.selected = (o.value===code));
-    // define terminal para carregar playlist
     [...$('plTerminal').options].forEach(o=>{ if(o.value===code) $('plTerminal').value=code; });
     loadPlaylist();
     window.scrollTo({top:0,behavior:'smooth'});
+  }
+  async function loadOnly(code){
+    $('plTerminal').value = code;
+    await loadPlaylist();
   }
 
   // ---------- Clientes & Terminais ----------
   async function renderClients(){
     const r=await fetch('/api/v1/status'); const j=await r.json(); const list=j.items||[];
-    // agrupa por cliente
     const clients={};
     list.forEach(it=>{
       const c=it.client||'Sem cliente';
@@ -294,17 +303,14 @@
 
     const wrap=$('clientsView'); wrap.innerHTML='';
     Object.values(clients).sort((a,b)=>a.name.localeCompare(b.name)).forEach(c=>{
-      // header do cliente
       const det=document.createElement('details');
       det.innerHTML=`<summary>${c.name} — ${c.online}/${c.total} online</summary>`;
-      // tabela de terminais
       const table=document.createElement('table');
       table.innerHTML=`
         <thead><tr>
           <th>Terminal</th><th>Grupo</th><th>Campanha</th>
           <th>Estado</th><th>Último</th><th>Tocando</th><th>Ações</th>
-        </tr></thead>
-        <tbody></tbody>`;
+        </tr></thead><tbody></tbody>`;
       const tb=table.querySelector('tbody');
       c.items.sort((a,b)=>(a.name||a.code||'').localeCompare(b.name||b.code||'')).forEach(it=>{
         const tr=document.createElement('tr');
@@ -327,9 +333,16 @@
       wrap.appendChild(det);
     });
   }
-  async function loadOnly(code){
-    $('plTerminal').value = code;
-    await loadPlaylist();
+
+  // ---------- Pareamento ----------
+  async function pairClaim(){
+    const code=$('pairCode').value.trim().toUpperCase();
+    const terminal=selValue('pairTerminal');
+    if(!code||!terminal){ $('pairMsg').textContent='Informe o código e o terminal.'; return; }
+    const r=await fetch('/api/v1/pair/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,terminal})});
+    const j=await r.json();
+    $('pairMsg').textContent = j.ok ? 'Vinculado com sucesso! O box vai reconhecer em instantes.' : (j.error||'Erro');
+    if(j.ok){ $('pairCode').value=''; }
   }
 
   // ---------- Diagnóstico ----------
