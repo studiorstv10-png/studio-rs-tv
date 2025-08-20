@@ -1,220 +1,289 @@
 <!doctype html>
 <html lang="pt-br">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{{ brand.name or 'Studio RS TV' }} — Painel</title>
-    <style>
-      :root {
-        --brand: {{ brand.primary_color|default('#0d1b2a') }};
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-        background: #0b0e11;
-        color: #e9eef5;
-      }
-      header {
-        background: var(--brand);
-        padding: 16px 20px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      header img.logo {
-        height: 36px;
-        width: auto;
-        display: block;
-      }
-      header .title {
-        font-size: 18px;
-        font-weight: 600;
-        line-height: 1.1;
-      }
-      main { padding: 20px; max-width: 1100px; margin: 0 auto; }
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(12, 1fr);
-        gap: 16px;
-      }
-      .card {
-        grid-column: span 12;
-        background: #11161c;
-        border: 1px solid #1b2530;
-        border-radius: 12px;
-        padding: 16px;
-      }
-      @media (min-width: 900px) {
-        .card.col-6 { grid-column: span 6; }
-        .card.col-4 { grid-column: span 4; }
-        .card.col-8 { grid-column: span 8; }
-      }
-      .card h2 {
-        margin: 0 0 10px 0;
-        font-size: 16px;
-        font-weight: 700;
-      }
-      label { display: block; font-size: 13px; margin: 10px 0 6px; color: #9fb3c8; }
-      input[type="text"], input[type="url"], select {
-        width: 100%;
-        padding: 10px 12px;
-        border-radius: 8px;
-        border: 1px solid #293341;
-        background: #0e141a;
-        color: #e9eef5;
-        outline: none;
-      }
-      input::placeholder { color: #6e8297; }
-      .row { display: flex; gap: 12px; }
-      .row > div { flex: 1; }
-      .btn {
-        display: inline-block;
-        margin-top: 12px;
-        padding: 10px 14px;
-        border-radius: 8px;
-        text-decoration: none;
-        border: 1px solid #2a3645;
-        background: #0e141a;
-        color: #e9eef5;
-        cursor: pointer;
-      }
-      .btn.primary { background: var(--brand); border-color: transparent; }
-      .muted { color: #8ea4ba; font-size: 13px; }
-      footer {
-        margin-top: 24px;
-        padding: 16px 20px;
-        border-top: 1px solid #1b2530;
-        text-align: center;
-        color: #9fb3c8;
-        font-size: 13px;
-      }
-      footer a { color: #b9d6ff; text-decoration: none; }
-      footer a:hover { text-decoration: underline; }
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 10px;
-        background: #0e141a;
-        border: 1px solid #293341;
-        border-radius: 999px;
-        font-size: 12px;
-        color: #b5c7da;
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <img class="logo" src="{{ brand.logo }}" alt="{{ brand.name }}" onerror="this.style.display='none'">
-      <div class="title">{{ brand.name }} — Painel</div>
-      <div style="margin-left:auto">
-        <span class="pill" title="Cor principal aplicada por CSS">Tema ativo</span>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ brand.name }} — Painel</title>
+  <style>
+    :root { --brand: {{ brand.primary_color|default('#0d1b2a') }}; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background:#0b0e11; color:#e9eef5;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    header { background:var(--brand); padding:16px 20px; display:flex; align-items:center; gap:12px; }
+    header img { height:36px; display:block; }
+    header .title { font-weight:700; }
+    main { max-width:1100px; margin:0 auto; padding:20px; }
+    .grid { display:grid; grid-template-columns: repeat(12,1fr); gap:16px; }
+    .card {
+      grid-column: span 12; background:#11161c; border:1px solid #1b2530;
+      border-radius:12px; padding:16px;
+    }
+    @media (min-width: 900px){
+      .col-6{ grid-column: span 6; }
+      .col-4{ grid-column: span 4; }
+      .col-8{ grid-column: span 8; }
+    }
+    h2{ margin:0 0 10px; font-size:16px; font-weight:800; }
+    label{ display:block; font-size:13px; margin:10px 0 6px; color:#9fb3c8; }
+    input[type="text"],input[type="url"],select{
+      width:100%; padding:10px 12px; border-radius:8px; border:1px solid #293341; background:#0e141a; color:#e9eef5;
+    }
+    input::placeholder{ color:#6e8297; }
+    .row{ display:flex; gap:12px; }
+    .row > div{ flex:1; }
+    .btn{
+      display:inline-block; margin-top:12px; padding:10px 14px; border-radius:8px;
+      background:#0e141a; border:1px solid #2a3645; color:#e9eef5; cursor:pointer; text-decoration:none;
+    }
+    .btn.primary{ background:var(--brand); border-color:transparent; }
+    .muted{ color:#9fb3c8; font-size:13px; }
+    ul.list{ list-style:none; padding:0; margin:6px 0 0; max-height:260px; overflow:auto; }
+    ul.list li{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:8px 10px; border:1px solid #22303d; border-radius:8px; margin-bottom:8px; background:#0f141a;
+      font-size:14px;
+    }
+    ul.list code{ color:#cfe3ff; font-size:12px; }
+    footer{ text-align:center; color:#9fb3c8; padding:14px; border-top:1px solid #1b2530; margin-top:24px; }
+    footer a{ color:#b9d6ff; text-decoration:none; }
+    footer a:hover{ text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header>
+  <img src="{{ brand.logo }}" alt="logo" onerror="this.style.display='none'">
+  <div class="title">{{ brand.name }} — Painel</div>
+  <div style="margin-left:auto" class="muted">Tema ativo</div>
+</header>
+
+<main>
+  <div class="grid">
+    <!-- Terminais -->
+    <div class="card col-6">
+      <h2>Terminais</h2>
+      <div class="row">
+        <div><label>Nome</label> <input id="tname" placeholder="BOX-001"></div>
+        <div><label>Código (opcional)</label> <input id="tcode" placeholder="001"></div>
       </div>
-    </header>
+      <div class="row">
+        <div><label>Cliente</label> <input id="client" placeholder="Mercado São José"></div>
+        <div><label>Grupo</label> <input id="group" placeholder="Açougue, Bebidas..."></div>
+      </div>
+      <button class="btn primary" onclick="saveTerminal()">Criar / Atualizar</button>
+      <div id="tmsg" class="muted" style="margin-top:8px"></div>
 
-    <main>
-      <div class="grid">
-        <div class="card col-6">
-          <h2>Terminais</h2>
-          <div class="row">
-            <div>
-              <label>Nome do Terminal</label>
-              <input id="tname" type="text" placeholder="Ex.: BOX-001" />
-            </div>
-            <div>
-              <label>Código (opcional)</label>
-              <input id="tcode" type="text" placeholder="Ex.: 12345678" />
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label>Cliente</label>
-              <input id="client" type="text" placeholder="Ex.: Mercado São José" />
-            </div>
-            <div>
-              <label>Grupo</label>
-              <input id="group" type="text" placeholder="Ex.: Açougue, Bebidas..." />
-            </div>
-          </div>
-          <button class="btn primary" onclick="fakeSaveTerminal()">Criar / Atualizar</button>
-          <div class="muted" id="terminalStatus" style="margin-top:8px"></div>
+      <label style="margin-top:16px">Meus terminais</label>
+      <select id="terminalSelect"></select>
+    </div>
+
+    <!-- Uploads -->
+    <div class="card col-6">
+      <h2>Uploads</h2>
+      <form id="upForm">
+        <input type="file" id="files" name="files" multiple />
+        <button class="btn" type="submit">Enviar</button>
+      </form>
+      <div class="muted" id="upMsg"></div>
+      <ul class="list" id="uploadsList"></ul>
+    </div>
+
+    <!-- Playlist -->
+    <div class="card col-12">
+      <h2>Playlist</h2>
+      <div class="row">
+        <div class="col">
+          <label>Terminal</label>
+          <select id="plTerminal"></select>
         </div>
-
-        <div class="card col-6">
-          <h2>Playlist (link simples p/ teste)</h2>
-          <label>URL da Playlist (JSON/MP4/M3U)</label>
-          <input id="plist" type="url" placeholder="https://exemplo.com/playlist.json" />
-          <button class="btn" onclick="testConfig()">Enviar p/ Player (teste)</button>
-          <div class="muted" id="configStatus" style="margin-top:8px"></div>
-        </div>
-
-        <div class="card col-12">
-          <h2>Diagnóstico</h2>
-          <div class="row">
-            <div>
-              <label>Ping</label>
-              <button class="btn" onclick="doPing()">/api/v1/ping</button>
-            </div>
-            <div>
-              <label>Config</label>
-              <button class="btn" onclick="doConfig()">/api/v1/config?code=DEMO</button>
-            </div>
-          </div>
-          <pre id="diag" class="muted" style="margin-top:10px; white-space:pre-wrap"></pre>
+        <div class="col">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="loadPlaylist()">Carregar Playlist</button>
         </div>
       </div>
-    </main>
 
-    <footer>
-      Desenvolvido por: <strong>Studio RS Ilhabela</strong> —
-      <a href="{{ brand.support_wa }}" target="_blank" rel="noopener">Abrir suporte no WhatsApp</a>
-    </footer>
+      <div class="row">
+        <div>
+          <label>Tipo</label>
+          <select id="plType">
+            <option value="video">Vídeo</option>
+            <option value="image">Imagem</option>
+            <option value="rss">RSS</option>
+          </select>
+        </div>
+        <div>
+          <label>Escolher dos uploads…</label>
+          <select id="fromUploads"></select>
+        </div>
+        <div>
+          <label>Ou URL</label>
+          <input id="plUrl" placeholder="/static/uploads/arquivo.ext ou https://..." />
+        </div>
+        <div>
+          <label>Duração (s) p/ imagem/RSS</label>
+          <input id="plDur" type="text" value="10" />
+        </div>
+      </div>
 
-    <script>
-      async function doPing() {
-        const el = document.getElementById('diag');
-        el.textContent = 'Carregando...';
-        try {
-          const r = await fetch('/api/v1/ping');
-          el.textContent = JSON.stringify(await r.json(), null, 2);
-        } catch (e) {
-          el.textContent = 'Erro: ' + e;
-        }
-      }
-      async function doConfig() {
-        const el = document.getElementById('diag');
-        el.textContent = 'Carregando...';
-        try {
-          const r = await fetch('/api/v1/config?code=DEMO');
-          el.textContent = JSON.stringify(await r.json(), null, 2);
-        } catch (e) {
-          el.textContent = 'Erro: ' + e;
-        }
-      }
-      function fakeSaveTerminal() {
-        const s = document.getElementById('terminalStatus');
-        const name = document.getElementById('tname').value.trim();
-        const code = document.getElementById('tcode').value.trim();
-        const client = document.getElementById('client').value.trim();
-        const group = document.getElementById('group').value.trim();
-        if (!name) { s.textContent = 'Informe o nome do terminal.'; return; }
-        s.textContent = `Terminal salvo (simulado): ${name} — cliente ${client || 'N/D'} — grupo ${group || 'N/D'} — código ${code || 'auto'}.`;
-      }
-      async function testConfig() {
-        const el = document.getElementById('configStatus');
-        const url = document.getElementById('plist').value.trim();
-        if (!url) { el.textContent = 'Informe a URL da playlist.'; return; }
-        try {
-          const r = await fetch(`/api/v1/config?code=DEMO&playlist=${encodeURIComponent(url)}`);
-          const j = await r.json();
-          el.textContent = 'Config enviada (simulado).';
-          const diag = document.getElementById('diag');
-          diag.textContent = JSON.stringify(j, null, 2);
-        } catch (e) {
-          el.textContent = 'Erro: ' + e;
-        }
-      }
-    </script>
-  </body>
+      <button class="btn" onclick="addItem()">Adicionar</button>
+      <button class="btn primary" onclick="savePlaylist()">Salvar Playlist</button>
+
+      <ul class="list" id="plist"></ul>
+    </div>
+
+    <!-- Diagnóstico -->
+    <div class="card col-12">
+      <h2>Diagnóstico</h2>
+      <div class="row">
+        <div><button class="btn" onclick="diag('/api/v1/ping')">/api/v1/ping</button></div>
+        <div><button class="btn" onclick="diag('/api/v1/config?code='+encodeURIComponent(selValue('terminalSelect')||'DEMO'))">/api/v1/config</button></div>
+      </div>
+      <pre id="diag" class="muted" style="white-space:pre-wrap; margin-top:10px;"></pre>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Desenvolvido por: <strong>Studio RS Ilhabela</strong> —
+  <a href="{{ brand.support_wa }}" target="_blank" rel="noopener">Abrir suporte no WhatsApp</a>
+</footer>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const selValue = (id) => { const s=$(id); return s && s.value; };
+
+  // ---------- Terminais ----------
+  async function refreshTerminals() {
+    const r = await fetch('/api/v1/terminals');
+    const j = await r.json();
+    const opts = (j.items||[]).map(t=>{
+      const key = t.code || t.name;
+      return `<option value="${key}">${t.name} — ${t.client||'s/cliente'}</option>`;
+    }).join('');
+    $('terminalSelect').innerHTML = opts;
+    $('plTerminal').innerHTML = opts;
+  }
+
+  async function saveTerminal() {
+    const payload = {
+      name: $('tname').value.trim(),
+      code: $('tcode').value.trim(),
+      client: $('client').value.trim(),
+      group: $('group').value.trim(),
+    };
+    const r = await fetch('/api/v1/terminals', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    $('tmsg').textContent = j.ok ? 'Terminal salvo!' : (j.error||'Erro');
+    await refreshTerminals();
+  }
+
+  // ---------- Uploads ----------
+  async function refreshUploads() {
+    const r = await fetch('/api/v1/uploads');
+    const j = await r.json();
+    const list = $('uploadsList');
+    const sel = $('fromUploads');
+    list.innerHTML = '';
+    sel.innerHTML = '<option value="">-- Escolher --</option>';
+    (j.items||[]).forEach(it=>{
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <span>${it.name} <code>${it.type}</code></span>
+        <span>
+          <a class="btn" href="${it.url}" target="_blank">abrir</a>
+          <button class="btn" onclick="useUpload('${it.url}','${it.type}')">usar</button>
+        </span>`;
+      list.appendChild(li);
+      const o = document.createElement('option');
+      o.value = it.url;
+      o.textContent = `${it.type}: ${it.name}`;
+      sel.appendChild(o);
+    });
+  }
+
+  $('upForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const data = new FormData();
+    const files = $('files').files;
+    for (const f of files) data.append('files', f);
+    $('upMsg').textContent = 'Enviando...';
+    const r = await fetch('/api/v1/upload', { method:'POST', body: data });
+    const j = await r.json();
+    $('upMsg').textContent = j.ok ? 'Ok!' : (j.error||'Erro');
+    await refreshUploads();
+  });
+
+  function useUpload(url,type){
+    $('plUrl').value = url;
+    $('plType').value = type;
+  }
+
+  // ---------- Playlist ----------
+  let items = [];
+
+  function renderPlaylist(){
+    const ul = $('plist'); ul.innerHTML = '';
+    items.forEach((it,idx)=>{
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <span>${idx+1}. ${it.type} — <code>${it.url}</code>${it.type==='image'||it.type==='rss' ? ` — ${it.duration}s` : ''}</span>
+        <button class="btn" onclick="removeItem(${idx})">remover</button>`;
+      ul.appendChild(li);
+    });
+  }
+  function removeItem(i){ items.splice(i,1); renderPlaylist(); }
+
+  function addItem(){
+    const type = selValue('plType');
+    const from = selValue('fromUploads');
+    const url = ($('plUrl').value.trim() || from);
+    if(!url){ alert('Informe URL ou escolha dos uploads.'); return; }
+    let dur = 0;
+    if(type==='image' || type==='rss'){
+      dur = parseInt($('plDur').value||'10',10) || 10;
+    }
+    items.push({type, url, duration: dur});
+    $('plUrl').value = ''; $('fromUploads').value = '';
+    renderPlaylist();
+  }
+
+  async function loadPlaylist(){
+    const term = selValue('plTerminal');
+    if(!term){ alert('Selecione um terminal.'); return; }
+    const r = await fetch(`/api/v1/playlists/${encodeURIComponent(term)}`);
+    const j = await r.json();
+    items = j.items || [];
+    renderPlaylist();
+  }
+
+  async function savePlaylist(){
+    const term = selValue('plTerminal');
+    if(!term){ alert('Selecione um terminal.'); return; }
+    const r = await fetch(`/api/v1/playlists/${encodeURIComponent(term)}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({items})
+    });
+    const j = await r.json();
+    if(j.ok){ alert('Playlist salva!'); } else { alert(j.error||'Erro'); }
+  }
+
+  // ---------- Diagnóstico ----------
+  async function diag(url){
+    const r = await fetch(url);
+    const j = await r.json();
+    $('diag').textContent = JSON.stringify(j,null,2);
+  }
+
+  // inicialização
+  (async function init(){
+    await refreshTerminals();
+    await refreshUploads();
+    await loadPlaylist().catch(()=>{});
+  })();
+</script>
+</body>
 </html>
