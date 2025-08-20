@@ -217,6 +217,19 @@ def api_config():
         "status": "ok"
     })
 
+@app.get("/api/v1/terminal/<code>")
+def api_terminal_detail(code):
+    code = (code or "").strip()
+    terms = load_terminals()
+    term = next((t for t in terms if t["code"] == code), None)
+    if not term:
+        return jsonify({"ok": False, "error": "terminal não existe"}), 404
+    return jsonify({
+        "ok": True,
+        "terminal": term,
+        "playlist": get_playlist(code)  # {"code":..., "items":[...]}
+    })
+
 @app.get("/favicon.ico")
 def favicon(): return ("", 204)
 
