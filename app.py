@@ -7,6 +7,7 @@ from mimetypes import guess_type
 from flask import Flask, render_template, jsonify, request
 from werkzeug.utils import secure_filename
 
+# ------- paths -------
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 PLAYLISTS_DIR = DATA_DIR / "playlists"
@@ -71,6 +72,9 @@ def get_branding():
         "support_wa": os.getenv("SUPPORT_WA", "https://wa.me/5512999999999"),
     }
 
+def _term_key(t):
+    return t.get("code") or t.get("name")
+
 # ------------------------ pages ------------------------
 
 @app.route("/")
@@ -96,7 +100,7 @@ def config():
         "updated_at": now_iso(),
     })
 
-# ------------------------ terminals --------------------
+# ------------------------ terminals (individual + lote) --------------------
 
 @app.route("/api/v1/terminals", methods=["GET", "POST"])
 def terminals():
@@ -114,8 +118,9 @@ def terminals():
         return jsonify({"ok": False, "error": "Informe pelo menos Nome ou Código."}), 400
 
     key = code or name
+    # update if exists
     for t in terms:
-        if (t.get("code") or t.get("name")) == key:
+        if (_term_key(t)) == key:
             t.update({
                 "name": name or t.get("name"),
                 "code": code or t.get("code"),
@@ -125,9 +130,51 @@ def terminals():
             write_json(TERMINALS_FILE, terms)
             return jsonify({"ok": True, "items": terms})
 
+    # create
     terms.append({"name": name or code, "code": code, "client": client, "group": group})
     write_json(TERMINALS_FILE, terms)
     return jsonify({"ok": True, "items": terms})
+
+@app.route("/api/v1/terminals/bulk", methods=["POST"])
+def terminals_bulk():
+    """
+    body:
+    {
+      "client": "João",
+      "base_name": "BOX",
+      "count": 10,
+      "code_start": 1,
+      "code_digits": 3,
+      "groups": ["Bebidas","Açougue","Caixa"]  # opcional: se tiver menos que count, repete vazio
+    }
+    """
+    payload = request.get_json(force=True, silent=True) or {}
+    client = (payload.get("client") or "").strip()
+    base_name = (payload.get("base_name") or "").strip() or "BOX"
+    count = int(payload.get("count", 0))
+    code_start = int(payload.get("code_start", 1))
+    code_digits = int(payload.get("code_digits", 3))
+    groups = payload.get("groups") or []
+
+    if not client or count <= 0:
+        return jsonify({"ok": False, "error": "Informe client e count > 0."}), 400
+
+    terms = read_json(TERMINALS_FILE, [])
+    created = []
+    for i in range(count):
+        n = code_start + i
+        code = str(n).zfill(code_digits)
+        name = f"{base_name} {n}"
+        group = groups[i] if i < len(groups) else ""
+        key = code or name
+        # evita duplicados pelo code
+        if not any((_term_key(t)) == key for t in terms):
+            term = {"name": name, "code": code, "client": client, "group": group}
+            terms.append(term)
+            created.append(term)
+
+    write_json(TERMINALS_FILE, terms)
+    return jsonify({"ok": True, "created": created, "total": len(terms)})
 
 # ------------------------ uploads ----------------------
 
@@ -168,7 +215,7 @@ def upload():
         })
     return jsonify({"ok": True, "items": saved})
 
-# ------------------------ playlists (legacy por terminal) ----
+# ------------------------ playlists por terminal ----------------------
 
 @app.route("/api/v1/playlists/<terminal>", methods=["GET", "POST"])
 def playlists(terminal: str):
@@ -194,7 +241,7 @@ def playlists(terminal: str):
     write_json(pfile, norm)
     return jsonify({"ok": True, "items": norm})
 
-# ------------------------ CAMPANHAS (playlist nome + múltiplos alvos) ----
+# ------------------------ campanhas (playlist nome + múltiplos alvos) ----
 
 def _load_campaigns():
     return read_json(CAMPAIGNS_FILE, {"campaigns": []})
@@ -209,11 +256,10 @@ def campaigns_list():
 @app.route("/api/v1/campaigns/save", methods=["POST"])
 def campaigns_save():
     """
-    body:
     {
       "name": "Campanha Setembro",
       "items": [ {type,url,duration?}, ... ],
-      "targets": ["BOX-001","BOX-002"]
+      "targets": ["001","002"]
     }
     """
     payload = request.get_json(force=True, silent=True) or {}
@@ -227,7 +273,6 @@ def campaigns_save():
     if not isinstance(targets, list) or not targets:
         return jsonify({"ok": False, "error": "Selecione ao menos um terminal."}), 400
 
-    # normaliza itens
     norm = []
     for it in items:
         t = (it.get("type") or "").lower()
@@ -242,10 +287,9 @@ def campaigns_save():
     camp = _load_campaigns()
     now = now_iso()
 
-    # atualiza se mesmo nome, senão adiciona
     updated = False
     for c in camp["campaigns"]:
-        if c.get("name", "").strip().lower() == name.lower():
+        if (c.get("name") or "").strip().lower() == name.lower():
             c["items"] = norm
             c["targets"] = targets
             c["updated_at"] = now
@@ -261,7 +305,7 @@ def campaigns_save():
         })
     _save_campaigns(camp)
 
-    # Grava playlist física por terminal (compatibilidade com o player)
+    # grava playlist física por terminal (para o player)
     for t in targets:
         write_json(PLAYLISTS_DIR / f"{t}.json", norm)
 
@@ -271,15 +315,6 @@ def campaigns_save():
 
 @app.route("/api/v1/heartbeat", methods=["POST"])
 def heartbeat():
-    """
-    body:
-    {
-      "code": "BOX-001",
-      "player": "android-tv",
-      "version": "1.0.0",
-      "playing": {"type":"video","url":"...", "index":1}
-    }
-    """
     payload = request.get_json(force=True, silent=True) or {}
     code = (payload.get("code") or "").strip()
     if not code:
@@ -323,7 +358,7 @@ def status_list():
 
     items = []
     for t in terms:
-        key = t.get("code") or t.get("name")
+        key = _term_key(t)
         s = st.get(key, {})
         last_seen = s.get("last_seen")
         online = False
@@ -331,7 +366,7 @@ def status_list():
             try:
                 dt = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
                 delta = (now - dt.replace(tzinfo=None)).total_seconds()
-                online = (delta <= (refresh * 120))  # 2× janela
+                online = (delta <= (refresh * 120))  # janela 2×
             except Exception:
                 pass
 
