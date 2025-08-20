@@ -1,652 +1,235 @@
 import os
-import re
 import json
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory, render_template_string, abort
+from flask import Flask, request, jsonify, render_template, send_from_directory
 
-# ──────────────────────────────────────────────────────────────────────────────
-# CONFIG
-# ──────────────────────────────────────────────────────────────────────────────
-BASE_DIR = Path(__file__).parent.resolve()
-DATA_DIR = BASE_DIR / "data"
-UPLOADS_DIR = BASE_DIR / "uploads"
+# --- Pastas base ---
+BASE = Path(__file__).resolve().parent
+DATA_DIR = BASE / "data"
+PLAYLISTS_DIR = DATA_DIR / "playlists"
+UPLOADS_DIR = BASE / "static" / "uploads"
 
-DATA_DIR.mkdir(exist_ok=True)
-UPLOADS_DIR.mkdir(exist_ok=True)
+for p in (DATA_DIR, PLAYLISTS_DIR, UPLOADS_DIR):
+    p.mkdir(parents=True, exist_ok=True)
 
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+BRANDING_FILE = DATA_DIR / "branding.json"
+TERMINALS_FILE = DATA_DIR / "terminals.json"
 
-BRAND = {
-    "name": os.getenv("BRAND_NAME", "Studio RS TV"),
-    "color": os.getenv("BRAND_COLOR", "#0d1b2a"),
-    "logo": os.getenv("BRAND_LOGO_URL", None)
-}
+# --- App ---
+app = Flask(__name__, static_folder="static", template_folder="templates", static_url_path="/static")
 
-DEFAULT_POLL_SECONDS = 60
-DEFAULT_LAYOUT = "16:9"
-
-PATH_TERMINALS = DATA_DIR / "terminals.json"   # {code: {...}}
-PATH_PLAYLISTS = DATA_DIR / "playlists.json"   # {code: [items]}
-PATH_UPLOADS   = DATA_DIR / "uploads.json"     # {"items":[...]}
-
-def _load(path, default):
-    if path.exists():
-        try:
-            return json.loads(path.read_text("utf-8"))
-        except Exception:
-            return default
+# --- Helpers de JSON em disco ---
+def _read_json(path, default):
+    try:
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        pass
     return default
 
-def _save(path, obj):
-    path.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
+def _write_json(path, data):
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-DB_TERMINALS = _load(PATH_TERMINALS, {})
-DB_PLAYLISTS = _load(PATH_PLAYLISTS, {})
-DB_UPLOADS   = _load(PATH_UPLOADS, {"items": []})
-
-def now_utc_iso():
+def _now_iso():
     return datetime.now(timezone.utc).isoformat()
 
-def sanitize_filename(name: str) -> str:
-    base = Path(name).name
-    base = re.sub(r"[^\w\-. ]+", "", base, flags=re.UNICODE)
-    base = base.strip().replace(" ", "_")
-    if not base:
-        base = "arquivo"
-    return base
+# --- Branding: ENV tem prioridade; se não, arquivo ---
+def get_branding():
+    name = os.getenv("BRAND_NAME")
+    color = os.getenv("BRAND_PRIMARY")
+    logo = os.getenv("BRAND_LOGO")
 
-# ──────────────────────────────────────────────────────────────────────────────
-# APP
-# ──────────────────────────────────────────────────────────────────────────────
-app = Flask(__name__, static_url_path="/static", static_folder="static")
+    file_data = _read_json(BRANDING_FILE, {
+        "name": "Studio RS TV",
+        "primary_color": "#0d1b2a",
+        "logo_url": ""
+    })
 
-INDEX_HTML = """
-<!doctype html>
-<html lang="pt-br">
-<head>
-  <meta charset="utf-8">
-  <title>{{ brand.name }} — Painel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root { --brand: {{ brand.color }}; }
-    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#0b1220;color:#e5e7eb}
-    header{display:flex;align-items:center;gap:12px;padding:16px;background:#0f1629;border-bottom:1px solid #1e2a44}
-    header img{height:32px}
-    h1{font-size:16px;margin:0}
-    a.btn,button.btn{background:var(--brand);border:0;color:white;padding:10px 14px;border-radius:8px;cursor:pointer}
-    .wrap{max-width:1200px;margin:24px auto;padding:0 16px;display:grid;gap:16px}
-    .card{background:#0f1629;border:1px solid #1e2a44;border-radius:12px;padding:16px}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .row>input,.row>select{flex:1 1 220px;background:#0b1220;border:1px solid #1e2a44;border-radius:8px;color:#e5e7eb;padding:10px}
-    .list{font-family:ui-monospace,Consolas,monospace;font-size:13px;line-height:1.6}
-    .ok{color:#4ade80}.warn{color:#fbbf24}.err{color:#f87171}
-    small{opacity:.7}
-    .pill{padding:4px 8px;border-radius:999px;background:#13203d;border:1px solid #223152}
-    .muted{opacity:.7}
-    .preview{background:#0b1220;border:1px dashed #223152;border-radius:10px;padding:12px}
-    .preview video,.preview img{max-width:100%;border-radius:8px}
-    .uploads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
-    .upload-item{background:#0b1220;border:1px solid #1e2a44;border-radius:10px;padding:8px}
-    .upload-item button{margin-left:8px}
-  </style>
-</head>
-<body>
-<header>
-  {% if brand.logo %}<img src="{{ brand.logo }}" alt="logo">{% endif %}
-  <h1>{{ brand.name }} — Painel <span class="pill">{{ brand.color }}</span></h1>
-</header>
+    return {
+        "name": name or file_data.get("name", "Studio RS TV"),
+        "primary_color": color or file_data.get("primary_color", "#0d1b2a"),
+        "logo_url": logo or file_data.get("logo_url", "")
+    }
 
-<div class="wrap">
+def set_branding(payload):
+    # Salva no arquivo; ENV sempre tem prioridade em runtime
+    current = get_branding()
+    current.update({
+        "name": payload.get("name", current["name"]),
+        "primary_color": payload.get("primary_color", current["primary_color"]),
+        "logo_url": payload.get("logo_url", current["logo_url"]),
+    })
+    _write_json(BRANDING_FILE, current)
+    return current
 
-  <!-- Terminais -->
-  <div class="card">
-    <h2>Terminais</h2>
-    <div class="row">
-      <input id="t_code"   placeholder="Código (ex.: BOX-0001)">
-      <input id="t_name"   placeholder="Nome visível (ex.: AÇOUGUE02)">
-      <input id="t_group"  placeholder="Grupo (opcional, ex.: MATRIZ)">
-      <button class="btn" onclick="createTerminal()">Criar</button>
-    </div>
-    <div style="margin-top:12px" class="list" id="terms"></div>
-  </div>
+# --- Terminais ---
+def load_terminals():
+    return _read_json(TERMINALS_FILE, [])
 
-  <!-- Uploads -->
-  <div class="card">
-    <h2>Uploads</h2>
-    <div class="row">
-      <input id="up_file" type="file" multiple>
-      <button class="btn" onclick="doUpload()">Enviar</button>
-    </div>
-    <div style="margin-top:12px">
-      <div class="row">
-        <select id="u_filter">
-          <option value="">Todos</option>
-          <option value="video">Vídeos</option>
-          <option value="image">Imagens</option>
-        </select>
-        <input id="u_search" placeholder="Buscar por nome (display)">
-        <button class="btn" onclick="refreshUploads()">Filtrar</button>
-      </div>
-    </div>
-    <div style="margin-top:12px" id="uploads" class="uploads-grid"></div>
-  </div>
+def save_terminals(list_):
+    _write_json(TERMINALS_FILE, list_)
 
-  <!-- Playlist -->
-  <div class="card">
-    <h2>Playlist</h2>
-    <div class="row">
-      <select id="p_term"></select>
-      <button class="btn" onclick="loadPlaylist()">Carregar</button>
-    </div>
+def upsert_terminal(code, name, group):
+    code = code.strip()
+    terminals = load_terminals()
+    existing = next((t for t in terminals if t["code"] == code), None)
+    now = _now_iso()
+    if existing:
+        existing["name"] = name
+        existing["group"] = group
+        existing.setdefault("created_at", now)
+    else:
+        terminals.append({
+            "code": code,
+            "name": name,
+            "group": group,
+            "created_at": now
+        })
+    save_terminals(terminals)
+    return terminals
 
-    <div class="row" style="margin-top:12px">
-      <select id="p_type">
-        <option value="video">Vídeo</option>
-        <option value="image">Imagem</option>
-        <option value="rss">RSS</option>
-      </select>
+def touch_terminal_seen(code):
+    terminals = load_terminals()
+    for t in terminals:
+        if t["code"] == code:
+            t["last_seen"] = _now_iso()
+            break
+    save_terminals(terminals)
 
-      <!-- Picker de uploads -->
-      <select id="p_pick">
-        <option value="">Escolher dos uploads…</option>
-      </select>
+# --- Playlist por terminal ---
+def playlist_path(code):
+    return PLAYLISTS_DIR / f"{code}.json"
 
-      <input id="p_url" placeholder="URL ou /uploads/arquivo.ext">
-      <input id="p_dur" placeholder="Duração (s) p/ imagem/RSS">
-      <button class="btn" onclick="addItem()">Adicionar</button>
-    </div>
+def get_playlist(code):
+    return _read_json(playlist_path(code), {"code": code, "items": []})
 
-    <div class="preview" id="preview" style="margin-top:12px">
-      <span class="muted">Pré-visualização aparecerá aqui…</span>
-    </div>
+def set_playlist(code, payload):
+    payload["code"] = code
+    _write_json(playlist_path(code), payload)
+    return payload
 
-    <div style="margin-top:12px" class="list" id="plist"></div>
-    <div style="margin-top:12px">
-      <button class="btn" onclick="savePlaylist()">Salvar Playlist</button>
-    </div>
-  </div>
+# --- Uploads ---
+ALLOWED = {".mp4", ".mov", ".mkv", ".jpg", ".jpeg", ".png", ".gif", ".webm"}
 
-</div>
+def list_uploads():
+    items = []
+    for p in sorted(UPLOADS_DIR.iterdir()):
+        if p.is_file():
+            ext = p.suffix.lower()
+            if ext in ALLOWED:
+                kind = "video" if ext in {".mp4", ".mov", ".mkv", ".webm"} else "image"
+                items.append({
+                    "name": p.name,
+                    "url": f"/static/uploads/{p.name}",
+                    "type": kind,
+                    "bytes": p.stat().st_size
+                })
+    return items
 
-<script>
-const ADMIN_PASS = "{{ admin }}";
-
-// helpers
-const $ = (q)=>document.querySelector(q);
-const fmt = (n)=> new Intl.NumberFormat('pt-BR').format(n);
-
-async function api(path, opt={}){
-  const r = await fetch(path, Object.assign({headers:{'x-admin-pass': ADMIN_PASS}}, opt));
-  if(!r.ok){const tx=await r.text(); throw new Error(tx||('HTTP '+r.status))}
-  return r.json();
-}
-
-/* ───────────── Terminais ───────────── */
-async function refreshTerms(){
-  const {items}= await api('/api/v1/admin/terminals');
-  const el = $('#terms'); el.innerHTML = '';
-  const sel = $('#p_term'); sel.innerHTML = '';
-  items.forEach(t=>{
-    el.innerHTML += `• <b>${t.code}</b> — ${t.name} <small>(grupo: ${t.group||'-'})</small> — status: <span class="${t.status==='ok'?'ok':'warn'}">${t.status}</span> — trial até ${t.trial_until||'-'}<br>`;
-    sel.innerHTML += `<option value="${t.code}">${t.code} — ${t.name}</option>`;
-  });
-}
-
-async function createTerminal(){
-  const code=$('#t_code').value.trim();
-  const name=$('#t_name').value.trim();
-  const group=$('#t_group').value.trim();
-  if(!code||!name) return alert('Código e Nome são obrigatórios');
-  await api('/api/v1/admin/terminal',{method:'POST',body:JSON.stringify({code,name,group,trial_days:15})});
-  $('#t_code').value=''; $('#t_name').value=''; $('#t_group').value='';
-  await refreshTerms();
-  alert('Criado com sucesso.');
-}
-
-/* ───────────── Uploads + Picker ───────────── */
-let uploadsCache = [];
-
-function guessTypeFromExt(url){
-  const u = url.toLowerCase();
-  if(u.match(/\.(mp4|mov|mkv|webm)$/)) return 'video';
-  if(u.match(/\.(png|jpg|jpeg|gif|webp)$/)) return 'image';
-  return 'file';
-}
-
-function renderUploadsToGrid(items){
-  const el = $('#uploads'); el.innerHTML='';
-  items.forEach(u=>{
-    const open = `<a class="btn" href="${u.path}" target="_blank" style="text-decoration:none">abrir</a>`;
-    const use  = `<button class="btn" onclick="useUpload('${u.path}','${u.type}')">usar</button>`;
-    el.innerHTML += `
-      <div class="upload-item">
-        <div><b>${u.display_name}</b> <small class="muted">(${u.type}, ${fmt(u.size)} bytes)</small></div>
-        <div><code>${u.path}</code></div>
-        <div style="margin-top:6px">${open} ${use}</div>
-      </div>
-    `;
-  });
-}
-
-function feedPicker(items){
-  const pick=$('#p_pick');
-  pick.innerHTML = '<option value="">Escolher dos uploads…</option>';
-  items.forEach(u=>{
-    pick.innerHTML += `<option value="${u.path}" data-type="${u.type}">${u.display_name} — ${u.path}</option>`;
-  });
-}
-
-async function refreshUploads(){
-  const {items} = await api('/api/v1/admin/uploads');
-  uploadsCache = items || [];
-  // filtro
-  const ft = $('#u_filter').value;
-  const q = ($('#u_search').value||'').toLowerCase().trim();
-  let filtered = uploadsCache.slice();
-  if(ft) filtered = filtered.filter(x=>x.type===ft);
-  if(q)  filtered = filtered.filter(x=> (x.display_name||'').toLowerCase().includes(q));
-  renderUploadsToGrid(filtered);
-  // picker mostra só imagens e vídeos
-  feedPicker(uploadsCache.filter(x=>x.type==='image'||x.type==='video'));
-}
-
-function useUpload(path, type){
-  $('#p_url').value = path;
-  if(type==='image'||type==='video') $('#p_type').value = type;
-  showPreview(path, type||guessTypeFromExt(path));
-}
-
-async function doUpload(){
-  const f = $('#up_file').files;
-  if(!f.length) return alert('Selecione arquivos.');
-  const fd = new FormData();
-  [...f].forEach(x=>fd.append('files', x));
-  const r = await fetch('/api/v1/admin/upload', {method:'POST', headers:{'x-admin-pass': ADMIN_PASS}, body: fd});
-  if(!r.ok){return alert('Falha no upload');}
-  await refreshUploads();
-  alert('Enviado.');
-}
-
-/* ───────────── Playlist + Preview ───────────── */
-let currentPlaylist = [];
-
-async function loadPlaylist(){
-  const term=$('#p_term').value;
-  const {items}= await api(`/api/v1/admin/playlist/${encodeURIComponent(term)}`);
-  currentPlaylist = items || [];
-  renderPlaylist();
-}
-
-function renderPlaylist(){
-  const el=$('#plist'); el.innerHTML='';
-  if(!currentPlaylist.length){el.innerHTML='<i>vazia</i>';return;}
-  currentPlaylist.forEach((it,i)=>{
-    const label = it.path || it.url || '';
-    el.innerHTML += `${i+1}. [${it.type}] ${label} ${it.duration?('('+it.duration+'s)'):''} <button onclick="rem(${i})">remover</button> <button onclick="showPreview('${label}','${it.type}')">ver</button><br>`;
-  });
-}
-
-function rem(i){ currentPlaylist.splice(i,1); renderPlaylist(); }
-
-function addItem(){
-  // Prioridade: se escolheu do picker, usa o picker.
-  const pick=$('#p_pick');
-  const pickedPath = pick.value;
-  let type = $('#p_type').value;
-  let url = $('#p_url').value.trim();
-  let duration=parseInt($('#p_dur').value.trim()||'0',10)||0;
-
-  if(pickedPath){
-    url = pickedPath;
-    const t = pick.selectedOptions[0]?.dataset?.type;
-    if(t==='image'||t==='video') type=t;
-  }
-  if(!url) return alert('Informe ou escolha um arquivo/URL.');
-
-  const it={type};
-  if(url.startsWith('/uploads/')) it.path=url; else it.url=url;
-  if(type!=='video'){ it.duration = duration||10; }
-  currentPlaylist.push(it);
-
-  // limpar inputs
-  $('#p_url').value=''; $('#p_dur').value=''; $('#p_pick').value='';
-  renderPlaylist();
-}
-
-async function savePlaylist(){
-  const term=$('#p_term').value;
-  await api(`/api/v1/admin/playlist/${encodeURIComponent(term)}`,{method:'POST', body:JSON.stringify({items: currentPlaylist})});
-  alert('Playlist salva.');
-}
-
-/* Preview */
-function showPreview(url, type){
-  const box = $('#preview');
-  box.innerHTML='';
-  if(!type) type = guessTypeFromExt(url);
-
-  if(type==='image'){
-    box.innerHTML = `<img alt="preview" src="${url}">`;
-  }else if(type==='video'){
-    box.innerHTML = `<video src="${url}" controls playsinline></video>`;
-  }else if(type==='rss'){
-    box.innerHTML = `<div class="muted">Prévia de RSS não renderizada aqui. <a class="btn" href="${url}" target="_blank" style="text-decoration:none">abrir</a></div>`;
-  }else{
-    box.innerHTML = `<div class="muted">Arquivo: <code>${url}</code> — <a class="btn" href="${url}" target="_blank" style="text-decoration:none">abrir</a></div>`;
-  }
-}
-
-/* Eventos de UI */
-$('#p_pick').addEventListener('change', (e)=>{
-  const val = e.target.value;
-  if(!val) return;
-  const type = e.target.selectedOptions[0]?.dataset?.type || '';
-  $('#p_url').value = val;
-  if(type) $('#p_type').value = type;
-  showPreview(val, type);
-});
-
-$('#p_url').addEventListener('input', (e)=>{
-  const val = e.target.value.trim();
-  if(!val) { $('#preview').innerHTML='<span class="muted">Pré-visualização aparecerá aqui…</span>'; return; }
-  showPreview(val, null);
-});
-
-(async function init(){
-  await refreshTerms();
-  await refreshUploads();
-})();
-</script>
-</body>
-</html>
-"""
-
-# ──────────────────────────────────────────────────────────────────────────────
-# AUTENTICAÇÃO ADMIN
-# ──────────────────────────────────────────────────────────────────────────────
-def _check_admin():
-    if request.headers.get("x-admin-pass") != ADMIN_PASSWORD:
-        abort(401, "unauthorized")
-
+# --- Rotas páginas ---
 @app.get("/")
 def index():
-    return render_template_string(INDEX_HTML, brand=BRAND, admin=ADMIN_PASSWORD)
+    b = get_branding()
+    return render_template("index.html", branding=b)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# ADMIN API
-# ──────────────────────────────────────────────────────────────────────────────
-@app.get("/api/v1/admin/terminals")
-def list_terminals():
-    _check_admin()
-    items = []
-    for code, t in DB_TERMINALS.items():
-        items.append({
-            "code": code,
-            "name": t.get("name"),
-            "group": t.get("group"),
-            "status": t.get("status","ok"),
-            "trial_until": t.get("trial_until")
-        })
-    return jsonify({"items": items})
+# --- API Branding ---
+@app.get("/api/v1/branding")
+def api_get_branding():
+    return jsonify(get_branding())
 
-@app.post("/api/v1/admin/terminal")
-def create_terminal():
-    _check_admin()
-    data = request.get_json(force=True)
-    code = data.get("code","").strip()
-    name = data.get("name","").strip()
-    group = data.get("group") or None
+@app.post("/api/v1/branding")
+def api_set_branding():
+    payload = request.get_json(force=True) or {}
+    return jsonify(set_branding(payload))
+
+# --- API Terminais ---
+@app.get("/api/v1/terminals")
+def api_terminals_list():
+    return jsonify(load_terminals())
+
+@app.post("/api/v1/terminals")
+def api_terminals_create():
+    payload = request.get_json(force=True) or {}
+    code = (payload.get("code") or "").strip()
+    name = (payload.get("name") or "").strip()
+    group = (payload.get("group") or "").strip()
+
     if not code or not name:
-        abort(400, "code and name required")
+        return jsonify({"ok": False, "error": "code e name são obrigatórios"}), 400
 
-    if code in DB_TERMINALS:
-        abort(409, "already exists")
+    # não duplica
+    terms = load_terminals()
+    if any(t["code"] == code for t in terms):
+        return jsonify({"ok": False, "error": "código já existe"}), 409
 
-    trial_days = int(data.get("trial_days") or 15)
-    trial_until = (datetime.now(timezone.utc) + timedelta(days=trial_days)).date().isoformat()
-
-    DB_TERMINALS[code] = {
-        "name": name,
-        "group": group,
-        "status": "ok",
-        "trial_until": trial_until,
-        "created_at": now_utc_iso()
-    }
-    _save(PATH_TERMINALS, DB_TERMINALS)
+    upsert_terminal(code, name, group)
     return jsonify({"ok": True})
 
-@app.get("/api/v1/admin/uploads")
-def admin_list_uploads():
-    _check_admin()
-    return jsonify(DB_UPLOADS)
+# --- API Uploads ---
+@app.get("/api/v1/uploads")
+def api_list_uploads():
+    return jsonify(list_uploads())
 
-@app.post("/api/v1/admin/upload")
-def admin_upload():
-    _check_admin()
+@app.post("/api/v1/upload")
+def api_upload():
     files = request.files.getlist("files")
-    if not files:
-        abort(400, "no files")
     saved = []
-    day_dir = UPLOADS_DIR / datetime.now().strftime("%Y-%m-%d")
-    day_dir.mkdir(parents=True, exist_ok=True)
-
     for f in files:
-        original = f.filename or "arquivo"
-        safe = sanitize_filename(original)
-        ext = "".join(Path(safe).suffixes) or ""
-        base_no_ext = Path(safe).stem
-        short = uuid.uuid4().hex[:8]
-        new_name = f"{base_no_ext}-{short}{ext}"
-        f.save(day_dir / new_name)
+        ext = Path(f.filename).suffix.lower()
+        if ext not in ALLOWED:
+            continue
+        safe_name = f"{datetime.now().strftime('%Y-%m-%d-%H%M%S')}-{f.filename.replace(' ', '_')}"
+        dest = UPLOADS_DIR / safe_name
+        f.save(dest)
+        saved.append(f"/static/uploads/{safe_name}")
+    return jsonify({"ok": True, "saved": saved})
 
-        size = (day_dir / new_name).stat().st_size
-        item = {
-            "id": uuid.uuid4().hex,
-            "display_name": original,
-            "path": f"/uploads/{day_dir.name}/{new_name}",
-            "type": "video" if ext.lower() in (".mp4",".mov",".mkv",".webm") else ("image" if ext.lower() in (".png",".jpg",".jpeg",".gif",".webp") else "file"),
-            "size": size,
-            "uploaded_at": now_utc_iso()
-        }
-        DB_UPLOADS["items"].append(item)
-        saved.append(item)
+# --- API Playlists ---
+@app.get("/api/v1/playlist/<code>")
+def api_get_playlist(code):
+    return jsonify(get_playlist(code))
 
-    _save(PATH_UPLOADS, DB_UPLOADS)
-    return jsonify({"saved": saved})
-
-@app.get("/uploads/<path:subpath>")
-def serve_upload(subpath):
-    full = (UPLOADS_DIR / subpath).resolve()
-    if not str(full).startswith(str(UPLOADS_DIR)):
-        abort(404)
-    return send_from_directory(full.parent, full.name)
-
-@app.get("/api/v1/admin/playlist/<code>")
-def admin_get_playlist(code):
-    _check_admin()
-    return jsonify({"items": DB_PLAYLISTS.get(code, [])})
-
-@app.post("/api/v1/admin/playlist/<code>")
-def admin_set_playlist(code):
-    _check_admin()
-    data = request.get_json(force=True)
-    items = data.get("items") or []
-    cleaned = []
+@app.post("/api/v1/playlist/<code>")
+def api_post_playlist(code):
+    payload = request.get_json(force=True) or {}
+    # payload esperado: {"items":[{"type":"video|image|rss","url":"...","duration":10?}, ...]}
+    items = payload.get("items", [])
+    norm = []
     for it in items:
-        t = it.get("type")
-        if t not in ("video","image","rss"): continue
-        obj = {"type": t}
-        if "path" in it: obj["path"] = it["path"]
-        if "url" in it:  obj["url"] = it["url"]
-        if t != "video":
-            dur = int(it.get("duration") or 10)
-            obj["duration"] = max(1, dur)
-        cleaned.append(obj)
+        t = (it.get("type") or "").lower()
+        if t not in {"video", "image", "rss"}:
+            continue
+        entry = {"type": t, "url": it.get("url", "")}
+        if t in {"image", "rss"}:
+            entry["duration"] = int(it.get("duration") or 10)
+        norm.append(entry)
+    data = {"code": code, "items": norm, "updated_at": _now_iso()}
+    return jsonify(set_playlist(code, data))
 
-    DB_PLAYLISTS[code] = cleaned
-    _save(PATH_PLAYLISTS, DB_PLAYLISTS)
-    return jsonify({"ok": True})
-
-# ──────────────────────────────────────────────────────────────────────────────
-# ENDPOINT DO PLAYER
-# ──────────────────────────────────────────────────────────────────────────────
+# --- API Config para o BOX ---
 @app.get("/api/v1/config")
-def player_config():
+def api_config():
     code = (request.args.get("code") or "").strip()
-    t = DB_TERMINALS.get(code)
-    if not t:
-        return jsonify({"status":"not_found"}), 404
+    if not code:
+        return jsonify({"status": "error", "error": "missing code"}), 400
 
-    today = datetime.now(timezone.utc).date()
-    trial_until = datetime.fromisoformat(t.get("trial_until")+"T00:00:00+00:00").date() if t.get("trial_until") else None
-    status = "ok"
-    if trial_until and today > trial_until:
-        status = "trial_expired"
-
-    cfg = {
-        "brand": BRAND,
+    touch_terminal_seen(code)
+    pl = get_playlist(code)
+    return jsonify({
+        "branding": get_branding(),
         "config_version": 1,
-        "layout": DEFAULT_LAYOUT,
-        "playlist": DB_PLAYLISTS.get(code, []),
-        "poll_seconds": DEFAULT_POLL_SECONDS,
-        "status": status,
-        "terminal": {"code": code, "name": t.get("name")},
-        "updated_at": now_utc_iso(),
-        "trial_until": t.get("trial_until")
-    }
-    return jsonify(cfg)
-
-@app.get("/api/v1/ping")
-def ping():
-    return jsonify({"ok": True, "ts": now_utc_iso()})
-
-# ──────────────────────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", "8000"))
-    app.run(host="0.0.0.0", port=port)
-
-# --- NOVO: ativação/monitoramento ---
-TOKENS_JSON = DATA / "tokens.json"         # {token:{code,device,created_at}}
-STATUS_JSON = DATA / "status.json"         # {code:{last_seen, ip, app_ver, net_ok, playing, errors}}
-def _new_token(): return uuid.uuid4().hex
-
-@app.get("/api/v1/support")
-def support():
-    return jsonify({
-        "name": os.getenv("SUPPORT_NAME", "Suporte"),
-        "whats": os.getenv("SUPPORT_WHATS", ""),
-        "whats_url": f"https://wa.me/{os.getenv('SUPPORT_WHATS','')}?text={os.getenv('SUPPORT_WHATS_MSG','')}"
-    })
-
-@app.post("/api/v1/activate")
-def activate():
-    body = request.get_json(force=True, silent=True) or {}
-    code = (body.get("code") or "").strip()
-    device = body.get("device", {})  # ex.: {"model":"Mi TV Stick","serial":"ABC123","app_ver":"1.0.0"}
-
-    if not code:
-        return jsonify({"ok": False, "error": "missing_code"}), 400
-
-    terms = _load_json(TERMINALS_JSON, {})
-    if code not in terms:
-        return jsonify({"ok": False, "error": "unknown_terminal"}), 404
-
-    tokens = _load_json(TOKENS_JSON, {})
-    token = _new_token()
-    tokens[token] = {"code": code, "device": device, "created_at": _now_iso()}
-    _save_json(TOKENS_JSON, tokens)
-
-    # cria status inicial
-    status = _load_json(STATUS_JSON, {})
-    status.setdefault(code, {})
-    status[code].update({"app_ver": device.get("app_ver"), "last_seen": None, "ip": None})
-    _save_json(STATUS_JSON, status)
-
-    return jsonify({"ok": True, "token": token, "config_url": f"/api/v1/config?token={token}"})
-
-@app.get("/api/v1/config")
-def config_player():
-    token = (request.args.get("token") or "").strip()
-    code = (request.args.get("code") or "").strip()
-
-    if token:
-        tokens = _load_json(TOKENS_JSON, {})
-        if token not in tokens:
-            return jsonify({"ok": False, "error": "invalid_token"}), 403
-        code = tokens[token]["code"]
-
-    if not code:
-        return jsonify({"ok": False, "error": "missing_code"}), 400
-
-    p = PLAYLISTS_DIR / f"{code}.json"
-    playlist = _load_json(p, {"code": code, "items": []})
-    return jsonify({
-        "name": BRAND_NAME,
-        "primary_color": BRAND_COLOR,
-        "logo": BRAND_LOGO_URL or None,
-        "playlist": playlist.get("items", []),
-        "poll_seconds": POLL_SECONDS,
-        "status": "ok",
+        "poll_seconds": 60,
         "terminal": {"code": code},
-        "updated_at": _now_iso()
+        "playlist": pl.get("items", []),
+        "updated_at": _now_iso(),
+        "status": "ok"
     })
 
-@app.post("/api/v1/heartbeat")
-def heartbeat():
-    body = request.get_json(force=True, silent=True) or {}
-    token = (body.get("token") or "").strip()
-    tokens = _load_json(TOKENS_JSON, {})
-    if token not in tokens:
-        return jsonify({"ok": False, "error": "invalid_token"}), 403
+# --- Favicon opcional ---
+@app.get("/favicon.ico")
+def favicon():
+    return ("", 204)
 
-    code = tokens[token]["code"]
-    status = _load_json(STATUS_JSON, {})
-    s = status.setdefault(code, {})
-    s.update({
-        "last_seen": _now_iso(),
-        "ip": request.headers.get("X-Forwarded-For", request.remote_addr),
-        "app_ver": body.get("app_ver") or s.get("app_ver"),
-        "net_ok": bool(body.get("net_ok", True)),
-        "playing": body.get("playing"),          # ex.: {"idx": 2, "type": "video", "url": "..."}
-        "errors": body.get("errors", [])         # lista de strings curtas
-    })
-    _save_json(STATUS_JSON, status)
-
-    # dica pro player: se quiser forçar reload de playlist, devolvemos “config_version”
-    return jsonify({"ok": True, "server_time": _now_iso()})
-
-@app.get("/api/v1/admin/status")
-def admin_status():
-    terms = _load_json(TERMINALS_JSON, {})
-    stat = _load_json(STATUS_JSON, {})
-    out = []
-    now = datetime.now(timezone.utc)
-    for code, t in terms.items():
-        s = stat.get(code, {})
-        last = s.get("last_seen")
-        online = False
-        minutes = None
-        if last:
-            try:
-                dt = datetime.fromisoformat(last)
-                diff = (now - dt).total_seconds()
-                online = diff < POLL_SECONDS * 2.5
-                minutes = round(diff/60, 2)
-            except Exception:
-                pass
-        out.append({
-            "code": code,
-            "name": t.get("name"),
-            "group": t.get("group"),
-            "online": online,
-            "last_seen": last,
-            "minutes_ago": minutes,
-            "ip": s.get("ip"),
-            "app_ver": s.get("app_ver"),
-            "net_ok": s.get("net_ok", True),
-            "playing": s.get("playing", None),
-        })
-    return jsonify({"ok": True, "data": out})
-
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
