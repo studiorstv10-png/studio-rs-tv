@@ -1,6 +1,5 @@
 {
   "name": "Studio RS TV",
-  "primary": "#0a2342",
-  "accent": "#1f6feb",
+  "primary_color": "#0d1b2a",
   "logo_url": ""
 }
