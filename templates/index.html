@@ -1,267 +1,311 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <title>{{ branding.name }} — Painel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ brand.name or 'Studio RS TV' }} — Painel</title>
+  <meta name="theme-color" content="{{ brand.primary_color or '#0d1b2a' }}">
   <style>
     :root{
-      --primary: {{ branding.primary_color|e }};
+      --primary: {{ brand.primary_color or '#0d1b2a' }};
       --bg: #0b1620;
-      --card: #0f1e2b;
-      --text: #e7eef7;
-      --muted: #9bb2c9;
+      --card: #0f1f2e;
+      --fg: #e9eef5;
+      --muted: #9fb3c8;
+      --pill: #10263a;
+      --accent: #2d6cdf;
+      --ok: #20c997;
+      --warn:#ffcc00;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-    header{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #142535;background:#0a1520;position:sticky;top:0;z-index:10}
-    header img{height:32px}
-    .color-dot{width:12px;height:12px;border-radius:999px;background:var(--primary);box-shadow:0 0 0 3px #0f1e2b inset}
-    h1{font-size:16px;margin:0}
-    main{max-width:1100px;margin:22px auto;padding:0 16px;display:grid;gap:18px}
-    .card{background:var(--card);padding:16px;border:1px solid #193047;border-radius:12px}
-    h2{font-size:16px;margin:0 0 12px 0;color:#fff}
-    label{display:block;margin:10px 0 6px 2px;color:var(--muted);font-size:12px}
-    input,select,button{border:1px solid #28465d;background:#0c1a25;color:#eaf3ff;border-radius:10px;padding:10px 12px;font-size:14px}
-    input,select{width:100%}
-    .row{display:grid;gap:12px}
-    .row.cols-3{grid-template-columns:1fr 1fr 1fr}
-    .row.cols-2{grid-template-columns:1fr 160px}
-    .btn{background:var(--primary);border-color:transparent;color:#fff;cursor:pointer}
-    .btn.secondary{background:#163149}
-    .list{display:grid;gap:8px}
-    .item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #243d51;background:#0b1924;border-radius:10px}
-    .item small{color:var(--muted)}
-    .stack{display:flex;gap:8px;flex-wrap:wrap}
-    .pill{padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid #2a4a61;background:#0b1a24;color:#eaf3ff}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial}
+    a{color:#8ac2ff;text-decoration:none}
+    .container{max-width:1100px;margin:0 auto;padding:16px}
+    header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #142638;background:linear-gradient(0deg,transparent,rgba(255,255,255,.02))}
+    header img{height:28px}
+    header .brand{font-weight:700;letter-spacing:.4px}
+    header .tag{background:var(--primary);padding:2px 8px;border-radius:999px;margin-left:8px;font-size:12px;opacity:.85}
+    h2{margin:14px 0 10px}
+    .grid{display:grid;gap:16px}
+    .grid.cols-2{grid-template-columns:1fr 1fr}
+    .card{background:var(--card);border:1px solid #142638;border-radius:10px;padding:14px}
+    .row{display:flex;gap:10px;align-items:center}
+    .row>input,.row>select,.row>button{height:38px}
+    input,select,button,textarea{
+      background:#0a1a27;color:var(--fg);border:1px solid #183149;border-radius:8px;padding:8px 10px;outline:none
+    }
+    input::placeholder{color:#6f8aa6}
+    button{background:var(--primary);border:none;cursor:pointer}
+    button.pill,a.pill{background:var(--pill);border:1px solid #183149;color:var(--fg);padding:6px 10px;border-radius:999px;font-size:12px}
     .muted{color:var(--muted)}
-    .hr{height:1px;background:#1a2d3d;margin:16px 0}
-    footer{padding:24px 18px;color:var(--muted);text-align:center;border-top:1px solid #142535;background:#0a1520;margin-top:12px}
-    footer a{color:#8fc8ff;text-decoration:none}
+    .stack{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+    .item{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #183149;border-radius:10px;padding:10px;background:#0c1c2a}
+    .item small{display:block;margin-top:4px}
+    .badge{background:#11263a;border:1px solid #183149;color:var(--muted);font-size:11px;border-radius:6px;padding:2px 6px}
+    footer{margin:28px 0 18px;text-align:center;color:var(--muted)}
+    footer a{color:#9fe1ff}
+    .w100{width:100%}
   </style>
 </head>
 <body>
-<header>
-  {% if branding.logo_url %}<img src="{{ branding.logo_url }}" alt="logo">{% endif %}
-  <div class="color-dot"></div>
-  <h1>{{ branding.name }}</h1>
-</header>
+  <header>
+    <img src="{{ brand.logo or url_for('static', filename='logo.png') }}" alt="logo" onerror="this.style.display='none'">
+    <div class="brand">{{ brand.name or 'Studio RS TV' }}</div>
+    <span class="tag">painel</span>
+  </header>
 
-<main>
-  <!-- Terminais -->
-  <section class="card">
-    <h2>Terminais</h2>
-    <div class="row cols-3">
-      <div><label>Código (ex.: BOX-0001)</label><input id="t-code" placeholder="BOX-0001"></div>
-      <div><label>Nome (ex.: Açougue02)</label><input id="t-name" placeholder="AÇOUGUE02"></div>
-      <div><label>Grupo (opcional)</label><input id="t-group" placeholder="MATRIZ"></div>
-    </div>
-    <div style="margin-top:10px"><button class="btn" id="btn-create">Criar</button></div>
-    <div class="hr"></div>
-    <div class="list" id="term-list"></div>
-  </section>
+  <div class="container grid cols-2">
+    <!-- COLUNA ESQUERDA -->
+    <section class="card">
+      <h2>Terminais</h2>
+      <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <input id="t-code" placeholder="Código (ex.: BOX-0001)">
+        <input id="t-name" placeholder="Nome visível (ex.: AÇOUGUE02)">
+        <input id="t-group" placeholder="Grupo (opcional, ex.: MATRIZ)">
+      </div>
+      <div class="stack" style="margin-top:10px">
+        <button id="btn-create">Criar</button>
+      </div>
 
-  <!-- Uploads -->
-  <section class="card">
-    <h2>Uploads</h2>
-    <div class="row cols-2">
-      <input type="file" id="up-files" multiple>
-      <button class="btn" id="btn-upload">Enviar</button>
-    </div>
-    <div class="row cols-3" style="margin-top:10px">
-      <select id="up-filter">
-        <option value="all">Todos</option>
-        <option value="video">Vídeo</option>
-        <option value="image">Imagem</option>
-      </select>
-      <input id="up-search" placeholder="Buscar por nome...">
-      <span></span>
-    </div>
-    <div class="list" id="up-list" style="margin-top:12px"></div>
-  </section>
+      <div class="list" id="term-list" style="margin-top:16px"></div>
+    </section>
 
-  <!-- Playlist -->
-  <section class="card">
-    <h2>Playlist</h2>
-    <div class="row cols-3">
-      <select id="pl-terminal"></select>
-      <button class="btn secondary" id="btn-load-pl">Carregar Playlist</button>
-      <span></span>
-    </div>
+    <!-- COLUNA DIREITA -->
+    <section class="card">
+      <h2>Uploads</h2>
+      <div class="row">
+        <input class="w100" id="up-files" type="file" multiple accept=".mp4,.mov,.mkv,.webm,.jpg,.jpeg,.png,.gif">
+        <button id="btn-upload">Enviar</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <select id="up-filter" style="min-width:160px">
+          <option value="all">Todos</option>
+          <option value="video">Vídeo</option>
+          <option value="image">Imagem</option>
+        </select>
+        <input id="up-search" class="w100" placeholder="Buscar por nome (display)">
+      </div>
+      <div id="up-list" class="list"></div>
+    </section>
 
-    <div class="row cols-3" style="margin-top:10px">
-      <select id="pl-type">
-        <option value="video">Vídeo</option>
-        <option value="image">Imagem</option>
-        <option value="rss">RSS</option>
-      </select>
-      <!-- NOVO: escolher dos uploads sem digitar -->
-      <select id="pl-choose-upload"></select>
-      <input id="pl-dur" placeholder="Duração (s) p/ imagem/RSS">
-    </div>
+    <!-- PLAYLIST (LARGURA TOTAL) -->
+    <section class="card" style="grid-column:1/-1">
+      <h2>Playlist</h2>
 
-    <div class="row cols-3" style="margin-top:10px">
-      <input id="pl-url" placeholder="(Opcional) URL manual ou /static/uploads/arquivo.ext">
-      <button class="btn" id="btn-add-item">Adicionar</button>
-      <button class="btn" id="btn-save-pl">Salvar Playlist</button>
-    </div>
+      <div class="row">
+        <select id="pl-terminal" class="w100">
+          <option value="">— selecione um terminal —</option>
+        </select>
+        <button id="btn-load-pl" title="Carregar playlist do terminal selecionado">Carregar Playlist</button>
+      </div>
 
-    <div class="list" id="pl-list" style="margin-top:12px"></div>
-  </section>
-</main>
+      <div class="row" style="margin-top:10px">
+        <select id="pl-type" style="min-width:160px">
+          <option value="video">Vídeo</option>
+          <option value="image">Imagem</option>
+          <option value="rss">RSS</option>
+        </select>
 
-<footer>
-  Desenvolvido por <a href="{{ support_link }}" target="_blank">Studio RS Ilhabela</a>
-</footer>
+        <select id="pl-choose-upload" class="w100">
+          <option value="">— escolher dos uploads —</option>
+        </select>
 
-<script>
-const $ = s => document.querySelector(s);
-const api = (u,o={}) => fetch(u,o).then(async r=>{const t=await r.text();try{return JSON.parse(t)}catch{return {ok:r.ok,raw:t}}});
+        <input id="pl-url" class="w100" placeholder="URL ou /static/uploads/arquivo.ext">
+        <input id="pl-dur" type="number" min="1" step="1" placeholder="Duração (s) p/ imagem/RSS" style="max-width:200px">
+        <button id="btn-add-item">Adicionar</button>
+      </div>
 
-let uploadsAll = [];
-let currentPlaylist = { code:"", items:[] };
+      <div id="pl-list" class="list" style="margin-top:14px"></div>
 
-function el(tag,props={},children=[]){const e=document.createElement(tag);
-  Object.entries(props).forEach(([k,v])=>{
-    if(k==="class")e.className=v;
-    else if(k==="text")e.textContent=v;
-    else if(typeof v==="function")e.addEventListener("click",v);
-    else e.setAttribute(k,v);
-  });
-  (Array.isArray(children)?children:[children]).forEach(c=>c&&e.appendChild(c));
-  return e;
-}
+      <div class="stack" style="margin-top:12px">
+        <button id="btn-save-pl">Salvar Playlist</button>
+      </div>
+    </section>
+  </div>
 
-/* -------- terminais -------- */
-async function loadTerminals(){
-  const list=await api("/api/v1/terminals");
-  const wrap=$("#term-list"); wrap.innerHTML="";
-  const sel=$("#pl-terminal"); sel.innerHTML="";
-  sel.appendChild(el("option",{value:"",text:"— selecione um terminal —"}));
+  <footer>
+    Desenvolvido por: <strong>Studio RS Ilhabela</strong> — 
+    <a href="{{ brand.support_wa or '#' }}" target="_blank">Suporte (WhatsApp)</a>
+  </footer>
 
-  list.forEach(t=>{
-    wrap.appendChild(el("div",{class:"item"},[
-      el("div",{},[
-        el("div",{text:`${t.code} — ${t.name}`}),
-        el("small",{class:"muted",text:t.group?`Grupo: ${t.group}`:"Sem grupo"})
-      ]),
-      el("div",{class:"stack"},[
-        el("span",{class:"pill"}, el("span",{text:(t.last_seen||"nunca")})),
-        el("a",{class:"pill",href:`/api/v1/config?code=${encodeURIComponent(t.code)}`,target:"_blank",text:"ver config"})
-      ])
-    ]));
+  <!-- ========== JS ==========- -->
+  <script>
+  const $ = s => document.querySelector(s);
+  const api = (u,o={}) => fetch(u,o).then(async r=>{const t=await r.text();try{return JSON.parse(t)}catch{return {ok:r.ok,raw:t}}});
+
+  let uploadsAll = [];
+  let currentPlaylist = { code:"", items:[] };
+
+  function el(tag,props={},children=[]){const e=document.createElement(tag);
+    Object.entries(props).forEach(([k,v])=>{
+      if(k==="class")e.className=v;
+      else if(k==="text")e.textContent=v;
+      else if(typeof v==="function")e.addEventListener("click",v);
+      else e.setAttribute(k,v);
+    });
+    (Array.isArray(children)?children:[children]).forEach(c=>c&&e.appendChild(c));
+    return e;
+  }
+
+  /* -------- terminais -------- */
+  function addTerminalCard(t){
+    const wrap=$("#term-list");
+    const card = el("div",{class:"item"});
+    const left = el("div",{},[
+      el("div",{text:`${t.code} — ${t.name}`}),
+      el("small",{class:"muted",text:t.group?`Grupo: ${t.group}`:"Sem grupo"})
+    ]);
+    const right = el("div",{class:"stack"},[
+      el("span",{class:"badge",text: t.last_seen ? `visto: ${t.last_seen}` : "nunca"}),
+      el("button",{class:"pill",onclick:()=>openTerminal(t.code)},"editar"),
+      el("a",{class:"pill",href:`/api/v1/config?code=${encodeURIComponent(t.code)}`,target:"_blank",text:"ver config"})
+    ]);
+    card.append(left,right);
+    wrap.appendChild(card);
+
+    const sel=$("#pl-terminal");
     sel.appendChild(el("option",{value:t.code,text:`${t.code} — ${t.name}`}));
-  });
-}
+  }
 
-/* -------- uploads -------- */
-async function loadUploads(){
-  uploadsAll = await api("/api/v1/uploads");
-  renderUploads();
-  fillChooseUploads();
-}
+  async function loadTerminals(){
+    const list=await api("/api/v1/terminals");
+    const wrap=$("#term-list"); wrap.innerHTML="";
+    const sel=$("#pl-terminal"); sel.innerHTML="";
+    sel.appendChild(el("option",{value:"",text:"— selecione um terminal —"}));
+    (list||[]).forEach(addTerminalCard);
+  }
 
-function renderUploads(){
-  const type=$("#up-filter").value;
-  const q=($("#up-search").value||"").toLowerCase();
-  const wrap=$("#up-list"); wrap.innerHTML="";
-  uploadsAll
-    .filter(u=>type==="all"||u.type===type)
-    .filter(u=>!q||u.name.toLowerCase().includes(q))
-    .forEach(u=>{
+  async function openTerminal(code){
+    const j = await api(`/api/v1/terminal/${encodeURIComponent(code)}`);
+    if(!j.ok && !j.terminal){ alert(j.error||"falha ao abrir"); return; }
+    $("#pl-terminal").value = j.terminal.code;
+    currentPlaylist = { code: j.terminal.code, items: (j.playlist.items||[]) };
+    renderPlaylist();
+    window.scrollTo({top: document.body.scrollHeight, behavior:"smooth"});
+  }
+
+  $("#btn-create").onclick = async ()=>{
+    const code=$("#t-code").value.trim();
+    const name=$("#t-name").value.trim();
+    const group=$("#t-group").value.trim();
+    if(!code||!name){ alert("Preencha código e nome."); return; }
+    const r = await fetch("/api/v1/terminals",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({code,name,group})
+    });
+    if(!r.ok){
+      const j = await r.json().catch(()=>({}));
+      alert(j.error||"Falha ao criar.");
+      return;
+    }
+    $("#t-code").value = ""; $("#t-name").value = ""; $("#t-group").value="";
+    await loadTerminals();
+  };
+
+  /* -------- uploads -------- */
+  async function loadUploads(){
+    uploadsAll = await api("/api/v1/uploads");
+    renderUploads();
+    fillChooseUploads();
+  }
+  function renderUploads(){
+    const type=$("#up-filter").value;
+    const q=($("#up-search").value||"").toLowerCase();
+    const wrap=$("#up-list"); wrap.innerHTML="";
+    (uploadsAll||[])
+      .filter(u=>type==="all"||u.type===type)
+      .filter(u=>!q||u.name.toLowerCase().includes(q))
+      .forEach(u=>{
+        wrap.appendChild(el("div",{class:"item"},[
+          el("div",{},[
+            el("div",{text:u.name}),
+            el("small",{class:"muted",text:`${u.type} • ${u.bytes} bytes`})
+          ]),
+          el("div",{class:"stack"},[
+            el("a",{class:"pill",href:u.url,target:"_blank",text:"abrir"}),
+            el("button",{class:"pill",onclick:()=>{$("#pl-choose-upload").value=u.url; $("#pl-url").value=u.url;}}, "usar")
+          ])
+        ]));
+      });
+  }
+  function fillChooseUploads(){
+    const sel=$("#pl-choose-upload");
+    sel.innerHTML="";
+    sel.appendChild(el("option",{value:"",text:"— escolher dos uploads —"}));
+    (uploadsAll||[]).forEach(u=>{
+      sel.appendChild(el("option",{value:u.url,text:`[${u.type}] ${u.name}`}));
+    });
+  }
+  $("#up-filter").oninput = renderUploads;
+  $("#up-search").oninput = renderUploads;
+
+  $("#btn-upload").onclick = async ()=>{
+    const files=$("#up-files").files;
+    if(!files||!files.length){ alert("Selecione arquivos."); return; }
+    const fd=new FormData();
+    [...files].forEach(f=>fd.append("files[]",f));
+    const r=await fetch("/api/v1/upload",{method:"POST",body:fd});
+    const j=await r.json().catch(()=>({}));
+    if(!j.ok){ alert("Upload falhou: "+(j.error||"")); return; }
+    $("#up-files").value="";
+    await loadUploads();
+  };
+
+  /* -------- playlist -------- */
+  function renderPlaylist(){
+    const wrap=$("#pl-list"); wrap.innerHTML="";
+    (currentPlaylist.items||[]).forEach((it,i)=>{
+      const head = it.type.toUpperCase();
+      const dur = (it.type==="image"||it.type==="rss")?` • ${it.duration||10}s`:"";
       wrap.appendChild(el("div",{class:"item"},[
         el("div",{},[
-          el("div",{text:u.name}),
-          el("small",{class:"muted",text:`${u.type} • ${u.bytes} bytes`})
+          el("div",{text:`[${head}] ${it.url}`}),
+          el("small",{class:"muted",text:dur})
         ]),
         el("div",{class:"stack"},[
-          el("a",{class:"pill",href:u.url,target:"_blank",text:"abrir"}),
-          el("button",{class:"pill",onclick:()=>{$("#pl-choose-upload").value=u.url; $("#pl-url").value=u.url;}}, "usar")
+          el("a",{class:"pill",href:it.url,target:"_blank",text:"ver"}),
+          el("button",{class:"pill",onclick:()=>{currentPlaylist.items.splice(i,1);renderPlaylist();}}, "remover")
         ])
       ]));
     });
-}
+  }
 
-function fillChooseUploads(){
-  const sel=$("#pl-choose-upload");
-  sel.innerHTML="";
-  sel.appendChild(el("option",{value:"",text:"— escolher dos uploads —"}));
-  uploadsAll.forEach(u=>{
-    sel.appendChild(el("option",{value:u.url,text:`[${u.type}] ${u.name}`}));
-  });
-}
+  $("#btn-load-pl").onclick = async ()=>{
+    const code=$("#pl-terminal").value;
+    if(!code){alert("Selecione o terminal.");return;}
+    const j=await api(`/api/v1/playlist/${encodeURIComponent(code)}`);
+    currentPlaylist={code,items:(j.items||[])};
+    renderPlaylist();
+  };
 
-$("#up-filter").oninput = renderUploads;
-$("#up-search").oninput = renderUploads;
+  $("#btn-add-item").onclick = ()=>{
+    if(!currentPlaylist.code){ alert("Selecione o terminal."); return; }
+    let url = $("#pl-choose-upload").value || $("#pl-url").value.trim();
+    if(!url){ alert("Escolha um upload ou informe a URL."); return; }
+    const type = $("#pl-type").value;
+    const dur = parseInt($("#pl-dur").value||"10",10);
+    const item={type,url};
+    if(type==="image"||type==="rss") item.duration = dur;
+    currentPlaylist.items.push(item);
+    $("#pl-url").value=""; $("#pl-dur").value=""; $("#pl-choose-upload").value="";
+    renderPlaylist();
+  };
 
-$("#btn-upload").onclick = async ()=>{
-  const files=$("#up-files").files;
-  if(!files||!files.length){ alert("Selecione arquivos."); return; }
-  const fd=new FormData();
-  [...files].forEach(f=>fd.append("files[]",f));
-  const r=await fetch("/api/v1/upload",{method:"POST",body:fd});
-  const j=await r.json().catch(()=>({}));
-  if(!j.ok){ alert("Upload falhou: "+(j.error||"")); return; }
-  $("#up-files").value="";
-  await loadUploads();
-};
+  $("#btn-save-pl").onclick = async ()=>{
+    if(!currentPlaylist.code){ alert("Selecione o terminal."); return; }
+    const r=await fetch(`/api/v1/playlist/${encodeURIComponent(currentPlaylist.code)}`,{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({items:currentPlaylist.items})
+    });
+    if(!r.ok){ alert("Erro ao salvar."); return; }
+    alert("Playlist salva.");
+    await loadTerminals();
+  };
 
-/* -------- playlist -------- */
-function renderPlaylist(){
-  const wrap=$("#pl-list"); wrap.innerHTML="";
-  currentPlaylist.items.forEach((it,i)=>{
-    const head = it.type.toUpperCase();
-    const dur = (it.type==="image"||it.type==="rss")?` • ${it.duration||10}s`:"";
-    wrap.appendChild(el("div",{class:"item"},[
-      el("div",{},[
-        el("div",{text:`[${head}] ${it.url}`}),
-        el("small",{class:"muted",text:dur})
-      ]),
-      el("div",{class:"stack"},[
-        el("a",{class:"pill",href:it.url,target:"_blank",text:"ver"}),
-        el("button",{class:"pill",onclick:()=>{currentPlaylist.items.splice(i,1);renderPlaylist();}}, "remover")
-      ])
-    ]));
-  });
-}
-
-$("#btn-load-pl").onclick = async ()=>{
-  const code=$("#pl-terminal").value;
-  if(!code){alert("Selecione o terminal.");return;}
-  const j=await api(`/api/v1/playlist/${encodeURIComponent(code)}`);
-  currentPlaylist={code,items:j.items||[]};
-  renderPlaylist();
-};
-
-$("#btn-add-item").onclick = ()=>{
-  if(!currentPlaylist.code){ alert("Selecione o terminal."); return; }
-
-  let url = $("#pl-choose-upload").value || $("#pl-url").value.trim();
-  if(!url){ alert("Escolha um upload ou informe a URL."); return; }
-
-  const type = $("#pl-type").value;
-  const dur = parseInt($("#pl-dur").value||"10",10);
-  const item={type,url};
-  if(type==="image"||type==="rss") item.duration = dur;
-
-  currentPlaylist.items.push(item);
-  $("#pl-url").value=""; $("#pl-dur").value=""; $("#pl-choose-upload").value="";
-  renderPlaylist();
-};
-
-$("#btn-save-pl").onclick = async ()=>{
-  if(!currentPlaylist.code){ alert("Selecione o terminal."); return; }
-  const r=await fetch(`/api/v1/playlist/${encodeURIComponent(currentPlaylist.code)}`,{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({items:currentPlaylist.items})
-  });
-  if(!r.ok){ alert("Erro ao salvar."); return; }
-  alert("Playlist salva.");
-};
-
-/* init */
-loadTerminals();
-loadUploads();
-</script>
+  /* init */
+  loadTerminals();
+  loadUploads();
+  </script>
 </body>
 </html>
