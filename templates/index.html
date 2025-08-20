@@ -15,32 +15,33 @@
       --warn: #ffcc00;
       --danger: #ff6b6b;
     }
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-    header{display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid #142535;background:#0a1520;position:sticky;top:0}
-    header img{height:34px}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    header{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #142535;background:#0a1520;position:sticky;top:0;z-index:10}
+    header img{height:32px}
     header h1{font-size:16px;margin:0}
-    .tag{font-size:12px;color:#fff;background:var(--primary);padding:2px 8px;border-radius:999px}
-    main{max-width:1100px;margin:24px auto;padding:0 16px;display:grid;gap:18px}
+    .color-dot{width:10px;height:10px;border-radius:999px;background:var(--primary);box-shadow:0 0 0 3px #0f1e2b inset}
+    main{max-width:1100px;margin:22px auto;padding:0 16px;display:grid;gap:18px}
     .card{background:var(--card);padding:16px;border:1px solid #193047;border-radius:12px}
     h2{font-size:16px;margin:0 0 12px 0;color:#fff}
     label{display:block;margin:10px 0 6px 2px;color:var(--muted);font-size:12px}
     input,select,button,textarea{border:1px solid #28465d;background:#0c1a25;color:#eaf3ff;border-radius:10px;padding:10px 12px;font-size:14px}
     input,select,textarea{width:100%}
     .row{display:grid;gap:12px}
-    .row.cols-3{grid-template-columns:1fr 1fr 140px}
+    .row.cols-3{grid-template-columns:1fr 1fr 1fr}
     .row.cols-2{grid-template-columns:1fr 160px}
     .btn{background:var(--primary);border-color:transparent;color:#fff;cursor:pointer}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
     .btn.secondary{background:#163149}
     .list{display:grid;gap:8px}
     .item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #243d51;background:#0b1924;border-radius:10px}
     .item small{color:var(--muted)}
     .stack{display:flex;gap:8px;flex-wrap:wrap}
-    .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-    .pill{padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid #2a4a61;background:#0b1a24}
-    .ok{color:var(--ok)} .muted{color:var(--muted)}
+    .pill{padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid #2a4a61;background:#0b1a24;color:#eaf3ff}
+    .muted{color:var(--muted)}
     .hr{height:1px;background:#1a2d3d;margin:16px 0}
-    .hint{font-size:12px;color:var(--muted)}
+    footer{padding:24px 18px;color:var(--muted);text-align:center;border-top:1px solid #142535;background:#0a1520;margin-top:12px}
+    footer a{color:#8fc8ff;text-decoration:none}
+    .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
   </style>
 </head>
 <body>
@@ -48,8 +49,8 @@
   {% if branding.logo_url %}
     <img src="{{ branding.logo_url }}" alt="logo" />
   {% endif %}
+  <div class="color-dot"></div>
   <h1>{{ branding.name }}</h1>
-  <span class="tag">{{ branding.primary_color }}</span>
 </header>
 
 <main>
@@ -76,9 +77,7 @@
 
     <div class="hr"></div>
 
-    <div class="list" id="term-list">
-      <!-- Terminais aparecem aqui -->
-    </div>
+    <div class="list" id="term-list"></div>
   </section>
 
   <!-- Uploads -->
@@ -88,7 +87,15 @@
       <input type="file" id="up-files" multiple />
       <button class="btn" id="btn-upload">Enviar</button>
     </div>
-    <div class="hint" style="margin-top:8px">Formatos aceitos: mp4, mov, mkv, webm, jpg, jpeg, png, gif</div>
+    <div class="row cols-3" style="margin-top:10px">
+      <select id="up-filter">
+        <option value="all">Todos</option>
+        <option value="video">Vídeo</option>
+        <option value="image">Imagem</option>
+      </select>
+      <input id="up-search" placeholder="Buscar por nome..." />
+      <span></span>
+    </div>
     <div class="list" id="up-list" style="margin-top:12px"></div>
   </section>
 
@@ -114,15 +121,22 @@
       <button class="btn" id="btn-add-item">Adicionar</button>
       <button class="btn" id="btn-save-pl" style="margin-left:8px">Salvar Playlist</button>
     </div>
-
     <div class="list" id="pl-list" style="margin-top:12px"></div>
   </section>
 </main>
 
+<footer>
+  Desenvolvido por <a href="{{ support_link }}" target="_blank">Studio RS Ilhabela</a>
+</footer>
+
 <script>
 const $ = sel => document.querySelector(sel);
-const api = (u, o={}) => fetch(u, o).then(r => r.json());
+const api = (u, o={}) => fetch(u, o).then(async r => {
+  const txt = await r.text();
+  try { return JSON.parse(txt); } catch(_){ return {ok:r.ok, raw:txt}; }
+});
 
+let uploadsAll = [];
 let currentPlaylist = { code: "", items: [] };
 
 function el(type, props={}, children=[]) {
@@ -130,6 +144,7 @@ function el(type, props={}, children=[]) {
   Object.entries(props).forEach(([k,v]) => {
     if (k === "class") e.className = v;
     else if (k === "text") e.textContent = v;
+    else if (typeof v === "function") e.addEventListener("click", v);
     else e.setAttribute(k, v);
   });
   (Array.isArray(children)?children:[children]).filter(Boolean).forEach(c => e.appendChild(c));
@@ -141,7 +156,7 @@ async function loadTerminals() {
   const list = await api("/api/v1/terminals");
   const wrap = $("#term-list");
   wrap.innerHTML = "";
-  // select da playlist
+
   const sel = $("#pl-terminal");
   sel.innerHTML = "";
   sel.appendChild(el("option", {value:"", text:"— selecione um terminal —"}));
@@ -159,8 +174,7 @@ async function loadTerminals() {
     ]);
     wrap.appendChild(line);
 
-    const opt = el("option", {value:t.code, text:`${t.code} — ${t.name}`});
-    sel.appendChild(opt);
+    sel.appendChild(el("option", {value:t.code, text:`${t.code} — ${t.name}`}));
   });
 }
 
@@ -185,22 +199,32 @@ $("#btn-create").onclick = async () => {
 
 /* ---------- Uploads ---------- */
 async function loadUploads() {
-  const list = await api("/api/v1/uploads");
+  uploadsAll = await api("/api/v1/uploads");
+  renderUploads();
+}
+
+function renderUploads() {
+  const type = $("#up-filter").value;
+  const q = ($("#up-search").value || "").toLowerCase();
   const wrap = $("#up-list");
   wrap.innerHTML = "";
-  list.forEach(u => {
-    const line = el("div", {class:"item"}, [
-      el("div", {}, [
-        el("div",{text:u.name}),
-        el("small",{class:"muted", text:`${u.type} • ${u.bytes} bytes`})
-      ]),
-      el("div",{class:"stack"},[
-        el("a",{class:"pill", href:u.url, target:"_blank", text:"abrir"}),
-        el("button",{class:"pill", onclick:()=>{$("#pl-url").value=u.url}}, "usar")
-      ])
-    ]);
-    wrap.appendChild(line);
-  });
+
+  uploadsAll
+    .filter(u => (type === "all" || u.type === type))
+    .filter(u => (!q || u.name.toLowerCase().includes(q)))
+    .forEach(u => {
+      const line = el("div", {class:"item"}, [
+        el("div", {}, [
+          el("div",{text:u.name}),
+          el("small",{class:"muted", text:`${u.type} • ${u.bytes} bytes`})
+        ]),
+        el("div",{class:"stack"},[
+          el("a",{class:"pill", href:u.url, target:"_blank", text:"abrir"}),
+          el("button",{class:"pill", onclick:()=>{$("#pl-url").value=u.url;}}, "usar")
+        ])
+      ]);
+      wrap.appendChild(line);
+    });
 }
 
 $("#btn-upload").onclick = async () => {
@@ -209,11 +233,14 @@ $("#btn-upload").onclick = async () => {
   const fd = new FormData();
   [...files].forEach(f => fd.append("files", f));
   const r = await fetch("/api/v1/upload", { method:"POST", body: fd });
-  const j = await r.json();
-  if (!j.ok) { alert("Erro no upload."); return; }
+  const j = await r.json().catch(()=>({}));
+  if (!j.ok) { alert("Erro no upload: " + (j.error||"")); return; }
   $("#up-files").value = "";
   await loadUploads();
 };
+
+$("#up-filter").oninput = renderUploads;
+$("#up-search").oninput = renderUploads;
 
 /* ---------- Playlist ---------- */
 function renderPlaylist() {
