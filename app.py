@@ -5,16 +5,19 @@ from datetime import datetime
 from mimetypes import guess_type
 
 from flask import (
-    Flask, render_template, jsonify, request, send_from_directory
+    Flask, render_template, jsonify, request
 )
 from werkzeug.utils import secure_filename
 
 # ------------------------------------------------------------------
-# Configuração básica
+# Pastas e arquivos
 # ------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 PLAYLISTS_DIR = DATA_DIR / "playlists"
+STATUS_FILE = DATA_DIR / "status.json"
+TERMINALS_FILE = DATA_DIR / "terminals.json"
+
 STATIC_DIR = BASE_DIR / "static"
 UPLOAD_DIR = STATIC_DIR / "uploads"
 
@@ -22,19 +25,16 @@ for p in (DATA_DIR, PLAYLISTS_DIR, UPLOAD_DIR):
     p.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTS = {
-    # vídeo
-    ".mp4", ".webm", ".mkv", ".mov",
-    # imagem
-    ".jpg", ".jpeg", ".png", ".gif",
-    # rss (opcional)
-    ".xml"
+    ".mp4", ".webm", ".mkv", ".mov",      # vídeo
+    ".jpg", ".jpeg", ".png", ".gif",      # imagem
+    ".xml"                                # rss (opcional)
 }
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
 
 # ------------------------------------------------------------------
-# Branding (logo, cor, etc.)
+# Branding
 # ------------------------------------------------------------------
 def get_branding():
     return {
@@ -46,8 +46,12 @@ def get_branding():
 
 
 # ------------------------------------------------------------------
-# Helpers de persistência
+# Helpers
 # ------------------------------------------------------------------
+def now_iso():
+    return datetime.utcnow().isoformat() + "Z"
+
+
 def read_json(path: Path, default):
     try:
         if path.exists():
@@ -65,84 +69,6 @@ def write_json(path: Path, data):
     tmp.replace(path)
 
 
-# ------------------------------------------------------------------
-# Rotas de página
-# ------------------------------------------------------------------
-@app.route("/")
-def index():
-    return render_template("index.html", brand=get_branding())
-
-
-# ------------------------------------------------------------------
-# API – Diagnóstico / Player
-# ------------------------------------------------------------------
-@app.route("/api/v1/ping")
-def ping():
-    return jsonify({"ok": True, "ts": datetime.utcnow().isoformat() + "Z"})
-
-
-@app.route("/api/v1/config")
-def config():
-    """
-    O player chama: /api/v1/config?code=BOX-001
-    Se existir uma playlist com esse code (data/playlists/BOX-001.json)
-    ela é retornada embutida no JSON.
-    """
-    code = request.args.get("code", "").strip()
-    playlist_items = []
-
-    if code:
-        pfile = PLAYLISTS_DIR / f"{code}.json"
-        playlist_items = read_json(pfile, [])
-
-    resp = {
-        "ok": True,
-        "code": code or "DEMO",
-        "refresh_minutes": int(os.getenv("REFRESH_MINUTES", "10")),
-        "playlist": playlist_items,
-        "updated_at": datetime.utcnow().isoformat() + "Z",
-    }
-    return jsonify(resp)
-
-
-# ------------------------------------------------------------------
-# API – Terminais
-# ------------------------------------------------------------------
-TERMINALS_FILE = DATA_DIR / "terminals.json"
-
-@app.route("/api/v1/terminals", methods=["GET", "POST"])
-def terminals():
-    terms = read_json(TERMINALS_FILE, [])
-    if request.method == "GET":
-        return jsonify({"ok": True, "items": terms})
-
-    payload = request.get_json(force=True, silent=True) or {}
-    name = (payload.get("name") or "").strip()
-    code = (payload.get("code") or "").strip()
-    client = (payload.get("client") or "").strip()
-    group = (payload.get("group") or "").strip()
-
-    if not name:
-        return jsonify({"ok": False, "error": "Nome do terminal é obrigatório."}), 400
-
-    key = code or name  # usa 'code' se houver; senão 'name'
-    found = False
-    for t in terms:
-        if (t.get("code") or t.get("name")) == key:
-            t.update({"name": name, "code": code, "client": client, "group": group})
-            found = True
-            break
-
-    if not found:
-        terms.append({"name": name, "code": code, "client": client, "group": group})
-
-    write_json(TERMINALS_FILE, terms)
-    return jsonify({"ok": True, "items": terms})
-
-
-# ------------------------------------------------------------------
-# API – Uploads
-# ------------------------------------------------------------------
 def _file_type_by_ext(ext: str) -> str:
     ext = (ext or "").lower()
     if ext in {".mp4", ".webm", ".mkv", ".mov"}:
@@ -151,7 +77,6 @@ def _file_type_by_ext(ext: str) -> str:
         return "image"
     if ext in {".xml"}:
         return "rss"
-    # tenta adivinhar
     mime, _ = guess_type("x" + ext)
     if mime:
         if mime.startswith("video/"):
@@ -161,6 +86,75 @@ def _file_type_by_ext(ext: str) -> str:
     return "file"
 
 
+# ------------------------------------------------------------------
+# Páginas
+# ------------------------------------------------------------------
+@app.route("/")
+def index():
+    return render_template("index.html", brand=get_branding())
+
+
+# ------------------------------------------------------------------
+# Diagnóstico / Config
+# ------------------------------------------------------------------
+@app.route("/api/v1/ping")
+def ping():
+    return jsonify({"ok": True, "ts": now_iso()})
+
+
+@app.route("/api/v1/config")
+def config():
+    code = request.args.get("code", "").strip()
+    pfile = PLAYLISTS_DIR / f"{code}.json" if code else None
+    playlist_items = read_json(pfile, []) if pfile else []
+
+    return jsonify({
+        "ok": True,
+        "code": code or "DEMO",
+        "refresh_minutes": int(os.getenv("REFRESH_MINUTES", "10")),
+        "playlist": playlist_items,
+        "updated_at": now_iso(),
+    })
+
+
+# ------------------------------------------------------------------
+# Terminais
+# ------------------------------------------------------------------
+@app.route("/api/v1/terminals", methods=["GET", "POST"])
+def terminals():
+    terms = read_json(TERMINALS_FILE, [])
+
+    if request.method == "GET":
+        return jsonify({"ok": True, "items": terms})
+
+    payload = request.get_json(force=True, silent=True) or {}
+    name = (payload.get("name") or "").strip()
+    code = (payload.get("code") or "").strip()
+    client = (payload.get("client") or "").strip()
+    group = (payload.get("group") or "").strip()
+
+    if not name and not code:
+        return jsonify({"ok": False, "error": "Informe pelo menos Nome ou Código."}), 400
+
+    key = code or name
+    # atualiza se já existir com a mesma chave; senão cria
+    for t in terms:
+        if (t.get("code") or t.get("name")) == key:
+            t.update({"name": name or t.get("name"),
+                      "code": code or t.get("code"),
+                      "client": client,
+                      "group": group})
+            write_json(TERMINALS_FILE, terms)
+            return jsonify({"ok": True, "items": terms})
+
+    terms.append({"name": name or code, "code": code, "client": client, "group": group})
+    write_json(TERMINALS_FILE, terms)
+    return jsonify({"ok": True, "items": terms})
+
+
+# ------------------------------------------------------------------
+# Uploads
+# ------------------------------------------------------------------
 @app.route("/api/v1/uploads", methods=["GET"])
 def list_uploads():
     items = []
@@ -182,7 +176,6 @@ def upload():
 
     files = request.files.getlist("files")
     saved = []
-
     for f in files:
         if not f.filename:
             continue
@@ -191,23 +184,20 @@ def upload():
             return jsonify({"ok": False, "error": f"Extensão não permitida: {ext}"}), 400
 
         safe = secure_filename(f.filename)
-        # prefixo com data/hora para evitar colisão
         ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
         final_name = f"{ts}-{safe}"
         dest = UPLOAD_DIR / final_name
         f.save(dest)
-
         saved.append({
             "name": final_name,
             "url": f"/static/uploads/{final_name}",
             "type": _file_type_by_ext(ext)
         })
-
     return jsonify({"ok": True, "items": saved})
 
 
 # ------------------------------------------------------------------
-# API – Playlists
+# Playlists
 # ------------------------------------------------------------------
 @app.route("/api/v1/playlists/<terminal>", methods=["GET", "POST"])
 def playlists(terminal: str):
@@ -226,14 +216,13 @@ def playlists(terminal: str):
     if not isinstance(items, list):
         return jsonify({"ok": False, "error": "Formato inválido (items)."}), 400
 
-    # valida estrutura mínima
     norm = []
     for it in items:
         t = (it.get("type") or "").lower()
         u = (it.get("url") or "").strip()
         if not t or not u:
             continue
-        d = int(it.get("duration", 0)) if t == "image" else 0
+        d = int(it.get("duration", 0)) if t in ("image", "rss") else 0
         norm.append({"type": t, "url": u, "duration": d})
 
     write_json(pfile, norm)
@@ -241,14 +230,78 @@ def playlists(terminal: str):
 
 
 # ------------------------------------------------------------------
-# Health
+# Monitoramento (Heartbeat)
 # ------------------------------------------------------------------
+@app.route("/api/v1/heartbeat", methods=["POST"])
+def heartbeat():
+    """
+    Player envia:
+    {
+      "code": "BOX-001",
+      "player": "android-tv",
+      "version": "1.0.0",
+      "playing": {"type":"video","url": "...", "index": 1}
+    }
+    """
+    payload = request.get_json(force=True, silent=True) or {}
+    code = (payload.get("code") or "").strip()
+    if not code:
+        return jsonify({"ok": False, "error": "code é obrigatório"}), 400
+
+    st = read_json(STATUS_FILE, {})
+    st[code] = {
+        "last_seen": now_iso(),
+        "ip": request.headers.get("X-Forwarded-For", request.remote_addr),
+        "player": payload.get("player"),
+        "version": payload.get("version"),
+        "playing": payload.get("playing"),
+    }
+    write_json(STATUS_FILE, st)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/v1/status", methods=["GET"])
+def status_list():
+    terms = read_json(TERMINALS_FILE, [])
+    st = read_json(STATUS_FILE, {})
+    refresh = int(os.getenv("REFRESH_MINUTES", "10"))
+    now = datetime.utcnow()
+
+    items = []
+    for t in terms:
+        key = t.get("code") or t.get("name")
+        s = st.get(key, {})
+        last_seen = s.get("last_seen")
+        online = False
+        if last_seen:
+            try:
+                # parse iso (com Z)
+                ts = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
+                delta = (now - ts.replace(tzinfo=None)).total_seconds()
+                online = (delta <= (refresh * 120))  # 2x janela
+            except Exception:
+                pass
+
+        items.append({
+            "name": t.get("name"),
+            "code": t.get("code"),
+            "client": t.get("client"),
+            "group": t.get("group"),
+            "online": online,
+            "last_seen": last_seen,
+            "playing": s.get("playing"),
+            "ip": s.get("ip"),
+            "player": s.get("player"),
+            "version": s.get("version"),
+        })
+    return jsonify({"ok": True, "items": items})
+
+
 @app.route("/healthz")
 def healthz():
     return "ok", 200
 
 
-# ------------------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
     app.run(host="0.0.0.0", port=port, debug=True)
