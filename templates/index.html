@@ -17,13 +17,13 @@
     @media (min-width:900px){ .col-4{grid-column:span 4} .col-6{grid-column:span 6} .col-12{grid-column:span 12} }
     h2{ margin:0 0 10px; font-size:16px; font-weight:800 }
     label{ display:block; font-size:13px; margin:10px 0 6px; color:#9fb3c8 }
-    input[type="text"],input[type="url"],select,textarea{
+    input[type="text"],input[type="url"],input[type="time"],input[type="date"],select,textarea{
       width:100%; padding:10px 12px; border-radius:8px; border:1px solid #293341; background:#0e141a; color:#e9eef5
     }
     textarea{ min-height:84px; resize:vertical }
     input::placeholder,textarea::placeholder{ color:#6e8297 }
-    .row{ display:flex; gap:12px }
-    .row > div{ flex:1 }
+    .row{ display:flex; gap:12px; flex-wrap:wrap }
+    .row > div{ flex:1 1 220px }
     .btn{ display:inline-block; margin-top:12px; padding:10px 14px; border-radius:8px;
           background:#0e141a; border:1px solid #2a3645; color:#e9eef5; cursor:pointer; text-decoration:none }
     .btn.primary{ background:var(--brand); border-color:transparent }
@@ -40,6 +40,7 @@
     summary{ cursor:pointer; font-weight:700 }
     footer{ text-align:center; color:#9fb3c8; padding:14px; border-top:1px solid #1b2530; margin-top:24px }
     footer a{ color:#b9d6ff; text-decoration:none } footer a:hover{ text-decoration:underline }
+    .chip{ display:inline-flex; align-items:center; gap:6px; background:#0d141a; border:1px solid #22303d; border-radius:999px; padding:6px 10px; font-size:12px }
   </style>
 </head>
 <body>
@@ -52,7 +53,7 @@
 <main>
   <div class="grid">
 
-    <!-- Terminais (unitário) + Parear código -->
+    <!-- Terminais (unitário) + Parear -->
     <section class="card col-6">
       <h2>Terminais (unitário)</h2>
       <div class="row">
@@ -67,31 +68,38 @@
       <div id="tmsg" class="muted" style="margin-top:8px"></div>
 
       <hr style="border:none;border-top:1px solid #1b2530;margin:16px 0">
-      <h2>Parear Box (código mostrado na TV)</h2>
+      <h2>Parear Box</h2>
       <div class="row">
-        <div><label>Código de pareamento</label><input id="pairCode" placeholder="ABC123"></div>
+        <div><label>Código de pareamento (mostrado na TV)</label><input id="pairCode" placeholder="ABC123"></div>
         <div><label>Terminal</label><select id="pairTerminal"></select></div>
       </div>
       <button class="btn" onclick="pairClaim()">Vincular</button>
       <div id="pairMsg" class="muted" style="margin-top:8px"></div>
     </section>
 
-    <!-- Criar em Lote -->
+    <!-- Criar em Lote + Import CSV -->
     <section class="card col-6">
-      <h2>Criação em Lote por Cliente</h2>
+      <h2>Criação em Lote / Importação</h2>
       <div class="row">
         <div><label>Cliente</label><input id="bulkClient" placeholder="João"></div>
         <div><label>Base do nome</label><input id="bulkBase" placeholder="BOX" value="BOX"></div>
-        <div><label>Quantidade</label><input id="bulkCount" placeholder="10" value="5"></div>
+        <div><label>Qtd</label><input id="bulkCount" placeholder="10" value="5"></div>
       </div>
       <div class="row">
         <div><label>Início do código</label><input id="bulkStart" placeholder="1" value="1"></div>
-        <div><label>Dígitos do código</label><input id="bulkDigits" placeholder="3" value="3"></div>
+        <div><label>Dígitos</label><input id="bulkDigits" placeholder="3" value="3"></div>
       </div>
-      <label>Grupos / Setores (opcional — uma linha por terminal, na ordem)</label>
+      <label>Grupos / Setores (uma linha por terminal)</label>
       <textarea id="bulkGroups" placeholder="Bebidas&#10;Açougue&#10;Caixa"></textarea>
       <button class="btn" onclick="createBulk()">Criar Lote</button>
       <div id="bulkMsg" class="muted" style="margin-top:8px"></div>
+
+      <hr style="border:none;border-top:1px solid #1b2530;margin:16px 0">
+      <h3>Importar CSV</h3>
+      <div class="muted">Cabeçalho: <code>name,code,client,group</code></div>
+      <input type="file" id="csvFile" accept=".csv">
+      <button class="btn" onclick="importCSV()">Importar</button>
+      <div id="csvMsg" class="muted" style="margin-top:8px"></div>
     </section>
 
     <!-- Uploads -->
@@ -107,7 +115,7 @@
 
     <!-- Campanha -->
     <section class="card col-12">
-      <h2>Campanha (playlist nomeada)</h2>
+      <h2>Campanha (playlist nomeada c/ agendamento)</h2>
       <div class="row">
         <div class="col"><label>Nome da campanha</label><input id="campName" placeholder="Semana do Cliente"></div>
         <div class="col"><label>Carregar playlist do terminal</label>
@@ -117,6 +125,25 @@
           </div>
         </div>
       </div>
+
+      <details>
+        <summary>Agendamento (opcional)</summary>
+        <div class="row">
+          <div><label>Início (data)</label><input type="date" id="schStartDate"></div>
+          <div><label>Fim (data)</label><input type="date" id="schEndDate"></div>
+          <div><label>De (hora)</label><input type="time" id="schStartTime" value="08:00"></div>
+          <div><label>Até (hora)</label><input type="time" id="schEndTime" value="18:00"></div>
+        </div>
+        <div class="row">
+          <div class="chip"><input type="checkbox" id="dMon" checked> seg</div>
+          <div class="chip"><input type="checkbox" id="dTue" checked> ter</div>
+          <div class="chip"><input type="checkbox" id="dWed" checked> qua</div>
+          <div class="chip"><input type="checkbox" id="dThu" checked> qui</div>
+          <div class="chip"><input type="checkbox" id="dFri" checked> sex</div>
+          <div class="chip"><input type="checkbox" id="dSat"> sáb</div>
+          <div class="chip"><input type="checkbox" id="dSun"> dom</div>
+        </div>
+      </details>
 
       <div class="row">
         <div style="flex:1">
@@ -150,13 +177,22 @@
       </div>
     </section>
 
-    <!-- Clientes & Terminais (hierárquico) -->
+    <!-- Clientes & Terminais -->
     <section class="card col-12">
       <div style="display:flex; align-items:center; gap:10px">
         <h2 style="margin:0">Clientes & Terminais</h2>
         <button class="btn" onclick="renderClients()">Atualizar</button>
       </div>
       <div id="clientsView"></div>
+    </section>
+
+    <!-- Alertas -->
+    <section class="card col-12">
+      <div style="display:flex; align-items:center; gap:10px">
+        <h2 style="margin:0">Alertas</h2>
+        <button class="btn" onclick="loadAlerts()">Atualizar</button>
+      </div>
+      <ul class="list" id="alertsList"></ul>
     </section>
 
     <!-- Diagnóstico -->
@@ -181,7 +217,7 @@
   const $=(id)=>document.getElementById(id);
   const selValue=(id)=>{const s=$(id);return s&&s.value;}
 
-  // ---------- Terminais (unitário) ----------
+  // ---------- Terminais ----------
   async function refreshTerminals(){
     const r=await fetch('/api/v1/terminals'); const j=await r.json();
     const opts=(j.items||[]).map(t=>{
@@ -204,8 +240,6 @@
     $('tname').value=''; $('tcode').value=''; $('client').value=''; $('group').value='';
     await refreshTerminals(); await renderClients();
   }
-
-  // ---------- Terminais (lote) ----------
   async function createBulk(){
     const groupsText=$('bulkGroups').value.trim();
     const groups = groupsText ? groupsText.split('\n').map(s=>s.trim()).filter(Boolean) : [];
@@ -220,6 +254,12 @@
     const r=await fetch('/api/v1/terminals/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const j=await r.json(); $('bulkMsg').textContent=j.ok?`Criados: ${j.created.length}`:(j.error||'Erro');
     await refreshTerminals(); await renderClients();
+  }
+  async function importCSV(){
+    const f=$('csvFile').files[0]; if(!f){ $('csvMsg').textContent='Escolha um CSV.'; return; }
+    const fd=new FormData(); fd.append('file',f);
+    const r=await fetch('/api/v1/terminals/import',{method:'POST',body:fd}); const j=await r.json();
+    $('csvMsg').textContent=j.ok?`Importados: ${j.added}`:(j.error||'Erro'); await refreshTerminals(); await renderClients();
   }
 
   // ---------- Uploads ----------
@@ -270,12 +310,35 @@
     const r=await fetch(`/api/v1/playlists/${encodeURIComponent(term)}`); const j=await r.json();
     items=j.items||[]; renderPlaylist();
   }
+  function _daysSelected(){
+    const ds=[];
+    if($('dMon').checked) ds.push('mon');
+    if($('dTue').checked) ds.push('tue');
+    if($('dWed').checked) ds.push('wed');
+    if($('dThu').checked) ds.push('thu');
+    if($('dFri').checked) ds.push('fri');
+    if($('dSat').checked) ds.push('sat');
+    if($('dSun').checked) ds.push('sun');
+    return ds;
+  }
   async function saveCampaign(){
     const name=$('campName').value.trim(); if(!name){ alert('Dê um nome à campanha.'); return; }
     const sel=[...$('plTargets').selectedOptions].map(o=>o.value);
     if(sel.length===0){ alert('Selecione 1+ terminais nos alvos.'); return; }
     if(items.length===0){ alert('Adicione ao menos 1 item na campanha.'); return; }
-    const r=await fetch('/api/v1/campaigns/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,items,targets:sel})});
+
+    const schedule={
+      days:_daysSelected(),
+      start_time: $('schStartTime').value || undefined,
+      end_time: $('schEndTime').value || undefined,
+      start_date: $('schStartDate').value || undefined,
+      end_date: $('schEndDate').value || undefined
+    };
+
+    const r=await fetch('/api/v1/campaigns/save',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,items,targets:sel,schedule})
+    });
     const j=await r.json(); if(j.ok){ alert('Campanha salva!'); renderClients(); } else { alert(j.error||'Erro'); }
   }
   function focusTerminal(code){
@@ -345,6 +408,18 @@
     if(j.ok){ $('pairCode').value=''; }
   }
 
+  // ---------- Alertas ----------
+  async function loadAlerts(){
+    const r=await fetch('/api/v1/alerts'); const j=await r.json();
+    const ul=$('alertsList'); ul.innerHTML='';
+    (j.items||[]).slice().reverse().forEach(a=>{
+      const li=document.createElement('li');
+      li.innerHTML=`<span>[${a.when}] <strong>${a.terminal}</strong> — ${a.client||'-'} ${a.group?('('+a.group+')'):''}</span>
+                    <span class="chip">offline</span>`;
+      ul.appendChild(li);
+    });
+  }
+
   // ---------- Diagnóstico ----------
   async function diag(url){ const r=await fetch(url); const j=await r.json(); $('diag').textContent=JSON.stringify(j,null,2); }
 
@@ -353,6 +428,7 @@
     await refreshTerminals();
     await refreshUploads();
     await renderClients();
+    await loadAlerts();
   })();
 </script>
 </body>
