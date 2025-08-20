@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>{{ brand.name }} — Painel</title>
   <style>
     :root { --brand: {{ brand.primary_color|default('#0d1b2a') }}; }
@@ -41,7 +41,7 @@
 </head>
 <body>
 <header>
-  <img src="{{ brand.logo }}" alt="logo" onerror="this.style.display='none'">
+  <img src="{{ brand.logo }}" alt="logo" onerror="this.src='/static/logo.png'">
   <div class="title">{{ brand.name }} — Painel</div>
   <div style="margin-left:auto" class="muted">Tema ativo</div>
 </header>
@@ -57,8 +57,8 @@
         <div><label>Código (opcional)</label><input id="tcode" placeholder="001"></div>
       </div>
       <div class="row">
-        <div><label>Cliente</label><input id="client" placeholder="Mercado São José"></div>
-        <div><label>Grupo</label><input id="group" placeholder="Açougue, Bebidas..."></div>
+        <div><label>Cliente</label><input id="client" placeholder="Mercado / Cliente"></div>
+        <div><label>Grupo / Setor</label><input id="group" placeholder="Açougue, Bebidas..."></div>
       </div>
       <button class="btn primary" onclick="saveTerminal()">Criar / Atualizar</button>
       <div id="tmsg" class="muted" style="margin-top:8px"></div>
@@ -78,44 +78,53 @@
       <ul class="list" id="uploadsList"></ul>
     </div>
 
-    <!-- Playlist -->
+    <!-- Playlist / Campanha -->
     <div class="card col-12">
-      <h2>Playlist</h2>
+      <h2>Campanha</h2>
+
       <div class="row">
-        <div><label>Terminal</label><select id="plTerminal"></select></div>
-        <div><label>&nbsp;</label><button class="btn" onclick="loadPlaylist()">Carregar Playlist</button></div>
+        <div><label>Nome da campanha</label><input id="campName" placeholder="Semana do Cliente"></div>
+        <div><label>Carregar playlist do terminal</label>
+          <div class="row">
+            <div><select id="plTerminal"></select></div>
+            <div><button class="btn" onclick="loadPlaylist()">Carregar Playlist</button></div>
+          </div>
+        </div>
       </div>
 
       <div class="row">
         <div>
-          <label>Tipo</label>
-          <select id="plType">
-            <option value="video">Vídeo</option>
-            <option value="image">Imagem</option>
-            <option value="rss">RSS</option>
-          </select>
+          <label>Alvos (segure CTRL/CMD para múltiplos)</label>
+          <select id="plTargets" multiple size="6"></select>
         </div>
-        <div>
-          <label>Escolher dos uploads…</label>
-          <select id="fromUploads"></select>
-        </div>
-        <div>
-          <label>Ou URL</label>
-          <input id="plUrl" placeholder="/static/uploads/arquivo.ext ou https://..." />
-        </div>
-        <div>
-          <label>Duração (s) p/ imagem/RSS</label>
-          <input id="plDur" type="text" value="10" />
+        <div style="flex:2">
+          <label>Adicionar itens</label>
+          <div class="row">
+            <div>
+              <select id="plType">
+                <option value="video">Vídeo</option>
+                <option value="image">Imagem</option>
+                <option value="rss">RSS</option>
+              </select>
+            </div>
+            <div>
+              <select id="fromUploads"></select>
+            </div>
+            <div>
+              <input id="plUrl" placeholder="/static/uploads/arquivo.ext ou https://..." />
+            </div>
+            <div>
+              <input id="plDur" type="text" value="10" title="Duração p/ imagem/RSS (s)"/>
+            </div>
+            <div><button class="btn" onclick="addItem()">Adicionar</button></div>
+          </div>
+          <ul class="list" id="plist"></ul>
+          <button class="btn primary" onclick="saveCampaign()">Salvar campanha</button>
         </div>
       </div>
-
-      <button class="btn" onclick="addItem()">Adicionar</button>
-      <button class="btn primary" onclick="savePlaylist()">Salvar Playlist</button>
-
-      <ul class="list" id="plist"></ul>
     </div>
 
-    <!-- Status / Monitoramento -->
+    <!-- Status -->
     <div class="card col-12">
       <div style="display:flex; align-items:center; gap:10px">
         <h2 style="margin:0">Status dos Boxes</h2>
@@ -125,7 +134,7 @@
         <thead>
           <tr>
             <th>Terminal</th><th>Cliente</th><th>Grupo</th>
-            <th>Estado</th><th>Último ping</th><th>Tocando</th><th>Versão</th><th>IP</th>
+            <th>Campanha</th><th>Estado</th><th>Último ping</th><th>Tocando</th><th>Versão</th><th>IP</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -138,6 +147,7 @@
       <div class="row">
         <div><button class="btn" onclick="diag('/api/v1/ping')">/api/v1/ping</button></div>
         <div><button class="btn" onclick="diag('/api/v1/config?code='+encodeURIComponent(selValue('terminalSelect')||'DEMO'))">/api/v1/config</button></div>
+        <div><button class="btn" onclick="diag('/api/v1/campaigns')">/api/v1/campaigns</button></div>
       </div>
       <pre id="diag" class="muted" style="white-space:pre-wrap; margin-top:10px;"></pre>
     </div>
@@ -151,165 +161,120 @@
 </footer>
 
 <script>
-  const $ = (id) => document.getElementById(id);
-  const selValue = (id) => { const s=$(id); return s && s.value; };
+  const $=(id)=>document.getElementById(id);
+  const selValue=(id)=>{const s=$(id);return s&&s.value;}
 
-  // ---------- Terminais ----------
-  async function refreshTerminals() {
-    const r = await fetch('/api/v1/terminals');
-    const j = await r.json();
-    const opts = (j.items||[]).map(t=>{
-      const key = t.code || t.name;
-      return `<option value="${key}">${t.name} — ${t.client||'s/cliente'}</option>`;
+  // -------- Terminais --------
+  async function refreshTerminals(){
+    const r=await fetch('/api/v1/terminals'); const j=await r.json();
+    const opts=(j.items||[]).map(t=>{
+      const key=t.code||t.name;
+      return `<option value="${key}">${t.name} — ${t.client||'s/cliente'} ${t.group?('('+t.group+')'):''}</option>`
     }).join('');
-    $('terminalSelect').innerHTML = opts;
-    $('plTerminal').innerHTML = opts;
+    $('terminalSelect').innerHTML=opts;
+    $('plTerminal').innerHTML=opts;
+    $('plTargets').innerHTML=opts;
   }
-
-  async function saveTerminal() {
-    const payload = {
-      name: $('tname').value.trim(),
-      code: $('tcode').value.trim(),
-      client: $('client').value.trim(),
-      group: $('group').value.trim(),
+  async function saveTerminal(){
+    const payload={
+      name:$('tname').value.trim(),
+      code:$('tcode').value.trim(),
+      client:$('client').value.trim(),
+      group:$('group').value.trim()
     };
-    const r = await fetch('/api/v1/terminals', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    const j = await r.json();
-    $('tmsg').textContent = j.ok ? 'Terminal salvo!' : (j.error||'Erro');
+    const r=await fetch('/api/v1/terminals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const j=await r.json(); $('tmsg').textContent=j.ok?'Terminal salvo!':(j.error||'Erro');
+    $('tname').value=''; $('tcode').value=''; $('client').value=''; $('group').value='';
     await refreshTerminals();
-    // limpa campos para facilitar novo cadastro
-    $('tname').value = ''; $('tcode').value = ''; $('client').value=''; $('group').value='';
   }
 
-  // ---------- Uploads ----------
-  async function refreshUploads() {
-    const r = await fetch('/api/v1/uploads');
-    const j = await r.json();
-    const list = $('uploadsList');
-    const sel = $('fromUploads');
-    list.innerHTML = '';
-    sel.innerHTML = '<option value="">-- Escolher --</option>';
+  // -------- Uploads ----------
+  async function refreshUploads(){
+    const r=await fetch('/api/v1/uploads'); const j=await r.json();
+    $('uploadsList').innerHTML='';
+    $('fromUploads').innerHTML='<option value="">-- Escolher dos uploads --</option>';
     (j.items||[]).forEach(it=>{
-      const li = document.createElement('li');
-      li.innerHTML = `
-        <span>${it.name} <code>${it.type}</code></span>
-        <span>
-          <a class="btn" href="${it.url}" target="_blank">abrir</a>
-          <button class="btn" onclick="useUpload('${it.url}','${it.type}')">usar</button>
-        </span>`;
-      list.appendChild(li);
-      const o = document.createElement('option');
-      o.value = it.url;
-      o.textContent = `${it.type}: ${it.name}`;
-      sel.appendChild(o);
+      const li=document.createElement('li');
+      li.innerHTML=`<span>${it.name} <code>${it.type}</code></span>
+                    <span><a class="btn" href="${it.url}" target="_blank">abrir</a>
+                    <button class="btn" onclick="useUpload('${it.url}','${it.type}')">usar</button></span>`;
+      $('uploadsList').appendChild(li);
+      const o=document.createElement('option'); o.value=it.url; o.textContent=`${it.type}: ${it.name}`;
+      $('fromUploads').appendChild(o);
     });
   }
-
-  $('upForm').addEventListener('submit', async (e)=>{
+  $('upForm').addEventListener('submit',async(e)=>{
     e.preventDefault();
-    const data = new FormData();
-    const files = $('files').files;
-    for (const f of files) data.append('files', f);
-    $('upMsg').textContent = 'Enviando...';
-    const r = await fetch('/api/v1/upload', { method:'POST', body:data });
-    const j = await r.json();
-    $('upMsg').textContent = j.ok ? 'Ok!' : (j.error||'Erro');
-    await refreshUploads();
+    const data=new FormData();
+    for(const f of $('files').files) data.append('files',f);
+    $('upMsg').textContent='Enviando...';
+    const r=await fetch('/api/v1/upload',{method:'POST',body:data}); const j=await r.json();
+    $('upMsg').textContent=j.ok?'Ok!':(j.error||'Erro'); await refreshUploads();
   });
+  function useUpload(url,type){ $('plUrl').value=url; $('plType').value=type; }
 
-  function useUpload(url,type){
-    $('plUrl').value = url;
-    $('plType').value = type;
-  }
-
-  // ---------- Playlist ----------
-  let items = [];
-
+  // -------- Playlist / Itens --------
+  let items=[];
   function renderPlaylist(){
-    const ul = $('plist'); ul.innerHTML = '';
-    items.forEach((it,idx)=>{
-      const li = document.createElement('li');
-      li.innerHTML = `
-        <span>${idx+1}. ${it.type} — <code>${it.url}</code>${it.type==='image'||it.type==='rss'?` — ${it.duration}s`:''}</span>
-        <button class="btn" onclick="removeItem(${idx})">remover</button>`;
+    const ul=$('plist'); ul.innerHTML='';
+    items.forEach((it,i)=>{
+      const li=document.createElement('li');
+      li.innerHTML=`<span>${i+1}. ${it.type} — <code>${it.url}</code>${it.type==='image'||it.type==='rss'?` — ${it.duration}s`:''}</span>
+                    <button class="btn" onclick="items.splice(${i},1);renderPlaylist()">remover</button>`;
       ul.appendChild(li);
     });
   }
-  function removeItem(i){ items.splice(i,1); renderPlaylist(); }
-
   function addItem(){
-    const type = selValue('plType');
-    const from = selValue('fromUploads');
-    const url = ($('plUrl').value.trim() || from);
+    const type=selValue('plType'); const from=selValue('fromUploads');
+    const url=($('plUrl').value.trim()||from);
     if(!url){ alert('Informe URL ou escolha dos uploads.'); return; }
-    let dur = 0;
-    if(type==='image' || type==='rss'){
-      dur = parseInt($('plDur').value||'10',10) || 10;
-    }
-    items.push({type, url, duration: dur});
-    $('plUrl').value=''; $('fromUploads').value='';
-    renderPlaylist();
+    let dur=0; if(type==='image'||type==='rss'){ dur=parseInt($('plDur').value||'10',10)||10; }
+    items.push({type,url,duration:dur}); $('plUrl').value=''; $('fromUploads').value=''; renderPlaylist();
   }
-
   async function loadPlaylist(){
-    const term = selValue('plTerminal');
-    if(!term){ alert('Selecione um terminal.'); return; }
-    const r = await fetch(`/api/v1/playlists/${encodeURIComponent(term)}`);
-    const j = await r.json();
-    items = j.items || [];
-    renderPlaylist();
+    const term=selValue('plTerminal'); if(!term){ alert('Selecione um terminal.'); return; }
+    const r=await fetch(`/api/v1/playlists/${encodeURIComponent(term)}`); const j=await r.json();
+    items=j.items||[]; renderPlaylist();
+  }
+  async function saveCampaign(){
+    const name=$('campName').value.trim(); if(!name){ alert('Dê um nome à campanha.'); return; }
+    const sel=[...$('plTargets').selectedOptions].map(o=>o.value);
+    if(sel.length===0){ alert('Selecione 1+ terminais nos alvos.'); return; }
+    if(items.length===0){ alert('Adicione ao menos 1 item na campanha.'); return; }
+    const r=await fetch('/api/v1/campaigns/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,items,targets:sel})});
+    const j=await r.json(); if(j.ok){ alert('Campanha salva!'); refreshStatus(); } else { alert(j.error||'Erro'); }
   }
 
-  async function savePlaylist(){
-    const term = selValue('plTerminal');
-    if(!term){ alert('Selecione um terminal.'); return; }
-    const r = await fetch(`/api/v1/playlists/${encodeURIComponent(term)}`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({items})
-    });
-    const j = await r.json();
-    if(j.ok){ alert('Playlist salva!'); } else { alert(j.error||'Erro'); }
-  }
-
-  // ---------- Status ----------
+  // -------- Status ----------
   async function refreshStatus(){
-    const r = await fetch('/api/v1/status');
-    const j = await r.json();
-    const tbody = document.querySelector('#statusTable tbody');
-    tbody.innerHTML = '';
+    const r=await fetch('/api/v1/status'); const j=await r.json();
+    const tbody=document.querySelector('#statusTable tbody'); tbody.innerHTML='';
     (j.items||[]).forEach(it=>{
-      const tr = document.createElement('tr');
-      const dot = `<span class="dot ${it.online?'ok':'off'}"></span>${it.online?'Online':'Offline'}`;
-      const playing = it.playing && it.playing.url ? (it.playing.type+' — '+it.playing.url) : '-';
-      tr.innerHTML = `
-        <td>${it.name || it.code || '-'}</td>
-        <td>${it.client || '-'}</td>
-        <td>${it.group || '-'}</td>
+      const tr=document.createElement('tr');
+      const dot=`<span class="dot ${it.online?'ok':'off'}"></span>${it.online?'Online':'Offline'}`;
+      const playing=it.playing&&it.playing.url ? (it.playing.type+' — '+it.playing.url) : '-';
+      tr.innerHTML=`
+        <td>${it.name||it.code||'-'}</td>
+        <td>${it.client||'-'}</td>
+        <td>${it.group||'-'}</td>
+        <td>${it.campaign||'-'}</td>
         <td>${dot}</td>
-        <td>${it.last_seen || '-'}</td>
+        <td>${it.last_seen||'-'}</td>
         <td>${playing}</td>
         <td>${(it.player||'-') + (it.version?(' '+it.version):'')}</td>
-        <td>${it.ip || '-'}</td>`;
+        <td>${it.ip||'-'}</td>`;
       tbody.appendChild(tr);
     });
   }
 
-  // ---------- Diagnóstico ----------
-  async function diag(url){
-    const r = await fetch(url);
-    const j = await r.json();
-    $('diag').textContent = JSON.stringify(j,null,2);
-  }
+  // -------- Diagnóstico ----------
+  async function diag(url){ const r=await fetch(url); const j=await r.json(); $('diag').textContent=JSON.stringify(j,null,2); }
 
-  // init
   (async function init(){
     await refreshTerminals();
     await refreshUploads();
     await refreshStatus();
-    setInterval(refreshStatus, 30000); // a cada 30s
+    setInterval(refreshStatus,30000);
   })();
 </script>
 </body>
