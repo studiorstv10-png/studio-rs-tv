@@ -2,7 +2,7 @@ import os
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template
 
 # --- Pastas base ---
 BASE = Path(__file__).resolve().parent
@@ -16,10 +16,13 @@ for p in (DATA_DIR, PLAYLISTS_DIR, UPLOADS_DIR):
 BRANDING_FILE = DATA_DIR / "branding.json"
 TERMINALS_FILE = DATA_DIR / "terminals.json"
 
-# --- App ---
 app = Flask(__name__, static_folder="static", template_folder="templates", static_url_path="/static")
+# até 256 MB por upload (ajuste se quiser)
+app.config["MAX_CONTENT_LENGTH"] = 256 * 1024 * 1024
 
-# --- Helpers de JSON em disco ---
+ALLOWED = {".mp4", ".mov", ".mkv", ".webm", ".jpg", ".jpeg", ".png", ".gif"}
+
+# ---------------- utils ----------------
 def _read_json(path, default):
     try:
         if path.exists():
@@ -34,26 +37,23 @@ def _write_json(path, data):
 def _now_iso():
     return datetime.now(timezone.utc).isoformat()
 
-# --- Branding: ENV tem prioridade; se não, arquivo ---
+# -------------- branding ----------------
 def get_branding():
-    name = os.getenv("BRAND_NAME")
-    color = os.getenv("BRAND_PRIMARY")
-    logo = os.getenv("BRAND_LOGO")
-
+    """ENV > arquivo > fallback em static/logo.png"""
     file_data = _read_json(BRANDING_FILE, {
         "name": "Studio RS TV",
         "primary_color": "#0d1b2a",
         "logo_url": ""
     })
-
-    return {
-        "name": name or file_data.get("name", "Studio RS TV"),
-        "primary_color": color or file_data.get("primary_color", "#0d1b2a"),
-        "logo_url": logo or file_data.get("logo_url", "")
-    }
+    name = os.getenv("BRAND_NAME") or file_data.get("name", "Studio RS TV")
+    color = os.getenv("BRAND_PRIMARY") or file_data.get("primary_color", "#0d1b2a")
+    logo = os.getenv("BRAND_LOGO") or file_data.get("logo_url") or ""
+    # se não veio nada, tenta static/logo.png
+    if not logo and (BASE / "static" / "logo.png").exists():
+        logo = "/static/logo.png"
+    return {"name": name, "primary_color": color, "logo_url": logo}
 
 def set_branding(payload):
-    # Salva no arquivo; ENV sempre tem prioridade em runtime
     current = get_branding()
     current.update({
         "name": payload.get("name", current["name"]),
@@ -63,7 +63,7 @@ def set_branding(payload):
     _write_json(BRANDING_FILE, current)
     return current
 
-# --- Terminais ---
+# -------------- terminais --------------
 def load_terminals():
     return _read_json(TERMINALS_FILE, [])
 
@@ -97,7 +97,7 @@ def touch_terminal_seen(code):
             break
     save_terminals(terminals)
 
-# --- Playlist por terminal ---
+# -------------- playlists --------------
 def playlist_path(code):
     return PLAYLISTS_DIR / f"{code}.json"
 
@@ -109,31 +109,14 @@ def set_playlist(code, payload):
     _write_json(playlist_path(code), payload)
     return payload
 
-# --- Uploads ---
-ALLOWED = {".mp4", ".mov", ".mkv", ".jpg", ".jpeg", ".png", ".gif", ".webm"}
-
-def list_uploads():
-    items = []
-    for p in sorted(UPLOADS_DIR.iterdir()):
-        if p.is_file():
-            ext = p.suffix.lower()
-            if ext in ALLOWED:
-                kind = "video" if ext in {".mp4", ".mov", ".mkv", ".webm"} else "image"
-                items.append({
-                    "name": p.name,
-                    "url": f"/static/uploads/{p.name}",
-                    "type": kind,
-                    "bytes": p.stat().st_size
-                })
-    return items
-
-# --- Rotas páginas ---
+# ----------------- rotas páginas ----------------
 @app.get("/")
 def index():
-    b = get_branding()
-    return render_template("index.html", branding=b)
+    branding = get_branding()
+    support_link = os.getenv("SUPPORT_WA", "https://wa.me/5512999999999")  # ajuste seu número
+    return render_template("index.html", branding=branding, support_link=support_link)
 
-# --- API Branding ---
+# ----------------- API branding ----------------
 @app.get("/api/v1/branding")
 def api_get_branding():
     return jsonify(get_branding())
@@ -143,7 +126,7 @@ def api_set_branding():
     payload = request.get_json(force=True) or {}
     return jsonify(set_branding(payload))
 
-# --- API Terminais ---
+# ----------------- API terminais ----------------
 @app.get("/api/v1/terminals")
 def api_terminals_list():
     return jsonify(load_terminals())
@@ -154,46 +137,60 @@ def api_terminals_create():
     code = (payload.get("code") or "").strip()
     name = (payload.get("name") or "").strip()
     group = (payload.get("group") or "").strip()
-
     if not code or not name:
         return jsonify({"ok": False, "error": "code e name são obrigatórios"}), 400
-
-    # não duplica
     terms = load_terminals()
     if any(t["code"] == code for t in terms):
         return jsonify({"ok": False, "error": "código já existe"}), 409
-
     upsert_terminal(code, name, group)
     return jsonify({"ok": True})
 
-# --- API Uploads ---
+# ----------------- API uploads ----------------
 @app.get("/api/v1/uploads")
 def api_list_uploads():
-    return jsonify(list_uploads())
+    items = []
+    for p in sorted(UPLOADS_DIR.iterdir()):
+        if not p.is_file():
+            continue
+        ext = p.suffix.lower()
+        if ext not in ALLOWED:
+            continue
+        kind = "video" if ext in {".mp4", ".mov", ".mkv", ".webm"} else "image"
+        items.append({
+            "name": p.name,
+            "url": f"/static/uploads/{p.name}",
+            "type": kind,
+            "bytes": p.stat().st_size
+        })
+    return jsonify(items)
 
 @app.post("/api/v1/upload")
 def api_upload():
-    files = request.files.getlist("files")
-    saved = []
-    for f in files:
-        ext = Path(f.filename).suffix.lower()
-        if ext not in ALLOWED:
-            continue
-        safe_name = f"{datetime.now().strftime('%Y-%m-%d-%H%M%S')}-{f.filename.replace(' ', '_')}"
-        dest = UPLOADS_DIR / safe_name
-        f.save(dest)
-        saved.append(f"/static/uploads/{safe_name}")
-    return jsonify({"ok": True, "saved": saved})
+    try:
+        files = request.files.getlist("files")
+        if not files:
+            return jsonify({"ok": False, "error": "nenhum arquivo"}), 400
+        saved = []
+        for f in files:
+            ext = Path(f.filename).suffix.lower()
+            if ext not in ALLOWED:
+                return jsonify({"ok": False, "error": f"extensão não permitida: {ext}"}), 400
+            safe_name = f"{datetime.now().strftime('%Y-%m-%d-%H%M%S')}-{f.filename.replace(' ', '_')}"
+            dest = UPLOADS_DIR / safe_name
+            f.save(dest)
+            saved.append(f"/static/uploads/{safe_name}")
+        return jsonify({"ok": True, "saved": saved})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
-# --- API Playlists ---
+# ----------------- API playlists ----------------
 @app.get("/api/v1/playlist/<code>")
-def api_get_playlist(code):
+def api_get_pl(code):
     return jsonify(get_playlist(code))
 
 @app.post("/api/v1/playlist/<code>")
-def api_post_playlist(code):
+def api_post_pl(code):
     payload = request.get_json(force=True) or {}
-    # payload esperado: {"items":[{"type":"video|image|rss","url":"...","duration":10?}, ...]}
     items = payload.get("items", [])
     norm = []
     for it in items:
@@ -207,13 +204,12 @@ def api_post_playlist(code):
     data = {"code": code, "items": norm, "updated_at": _now_iso()}
     return jsonify(set_playlist(code, data))
 
-# --- API Config para o BOX ---
+# -------- BOX consome isso --------
 @app.get("/api/v1/config")
 def api_config():
     code = (request.args.get("code") or "").strip()
     if not code:
         return jsonify({"status": "error", "error": "missing code"}), 400
-
     touch_terminal_seen(code)
     pl = get_playlist(code)
     return jsonify({
@@ -226,7 +222,6 @@ def api_config():
         "status": "ok"
     })
 
-# --- Favicon opcional ---
 @app.get("/favicon.ico")
 def favicon():
     return ("", 204)
