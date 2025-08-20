@@ -1,11 +1,12 @@
 import os
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from mimetypes import guess_type
 
 from flask import Flask, render_template, jsonify, request
 from werkzeug.utils import secure_filename
+import random
 
 # ------- paths -------
 BASE_DIR = Path(__file__).resolve().parent
@@ -14,6 +15,7 @@ PLAYLISTS_DIR = DATA_DIR / "playlists"
 STATUS_FILE = DATA_DIR / "status.json"
 TERMINALS_FILE = DATA_DIR / "terminals.json"
 CAMPAIGNS_FILE = DATA_DIR / "campaigns.json"
+PAIR_FILE = DATA_DIR / "pairings.json"
 
 STATIC_DIR = BASE_DIR / "static"
 UPLOAD_DIR = STATIC_DIR / "uploads"
@@ -26,6 +28,8 @@ ALLOWED_EXTS = {
     ".jpg", ".jpeg", ".png", ".gif",       # imagem
     ".xml"                                 # rss
 }
+
+PAIR_TTL_SECONDS = 15 * 60  # 15 minutos
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
@@ -145,7 +149,7 @@ def terminals_bulk():
       "count": 10,
       "code_start": 1,
       "code_digits": 3,
-      "groups": ["Bebidas","Açougue","Caixa"]  # opcional: se tiver menos que count, repete vazio
+      "groups": ["Bebidas","Açougue","Caixa"]  # opcional
     }
     """
     payload = request.get_json(force=True, silent=True) or {}
@@ -167,7 +171,6 @@ def terminals_bulk():
         name = f"{base_name} {n}"
         group = groups[i] if i < len(groups) else ""
         key = code or name
-        # evita duplicados pelo code
         if not any((_term_key(t)) == key for t in terms):
             term = {"name": name, "code": code, "client": client, "group": group}
             terms.append(term)
@@ -234,7 +237,7 @@ def playlists(terminal: str):
     for it in items:
         t = (it.get("type") or "").lower()
         u = (it.get("url") or "").strip()
-        if not t or not u: 
+        if not t or not u:
             continue
         d = int(it.get("duration", 0)) if t in ("image", "rss") else 0
         norm.append({"type": t, "url": u, "duration": d})
@@ -277,7 +280,7 @@ def campaigns_save():
     for it in items:
         t = (it.get("type") or "").lower()
         u = (it.get("url") or "").strip()
-        if not t or not u: 
+        if not t or not u:
             continue
         d = int(it.get("duration", 0)) if t in ("image", "rss") else 0
         norm.append({"type": t, "url": u, "duration": d})
@@ -384,6 +387,89 @@ def status_list():
             "version": s.get("version"),
         })
     return jsonify({"ok": True, "items": items})
+
+# ------------------------ pairing (box <-> terminal) ----------------------
+
+def _pair_db():
+    return read_json(PAIR_FILE, {"codes": {}})
+
+def _pair_save(db):
+    write_json(PAIR_FILE, db)
+
+def _cleanup_pairings(db=None):
+    if db is None:
+        db = _pair_db()
+    codes = db.get("codes", {})
+    now = datetime.utcnow()
+    changed = False
+    for c, info in list(codes.items()):
+        ts = info.get("created_at")
+        exp = info.get("expires_in", PAIR_TTL_SECONDS)
+        try:
+            dt = datetime.fromisoformat(ts.replace("Z","+00:00"))
+        except Exception:
+            dt = now - timedelta(seconds=PAIR_TTL_SECONDS*2)
+        if (now - dt).total_seconds() > exp:
+            codes.pop(c, None); changed = True
+    if changed:
+        db["codes"] = codes
+        _pair_save(db)
+    return db
+
+def _gen_code():
+    alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"  # sem 0/O/1/I
+    return "".join(random.choice(alphabet) for _ in range(6))
+
+@app.route("/api/v1/pair/start", methods=["POST"])
+def pair_start():
+    """ Chamado pelo BOX: devolve um código para mostrar na TV """
+    db = _cleanup_pairings()
+    code = _gen_code()
+    while code in db.get("codes", {}):
+        code = _gen_code()
+    db["codes"][code] = {
+        "created_at": now_iso(),
+        "terminal": None,
+        "ip": request.headers.get("X-Forwarded-For", request.remote_addr),
+        "expires_in": PAIR_TTL_SECONDS
+    }
+    _pair_save(db)
+    return jsonify({"ok": True, "code": code, "expires_in": PAIR_TTL_SECONDS})
+
+@app.route("/api/v1/pair/claim", methods=["POST"])
+def pair_claim():
+    """ Chamado pelo painel: recebe {code, terminal} e vincula """
+    payload = request.get_json(force=True, silent=True) or {}
+    code = (payload.get("code") or "").strip().upper()
+    terminal = (payload.get("terminal") or "").strip()
+    if not code or not terminal:
+        return jsonify({"ok": False, "error": "code e terminal são obrigatórios."}), 400
+    db = _cleanup_pairings()
+    info = db.get("codes", {}).get(code)
+    if not info:
+        return jsonify({"ok": False, "error": "Código inválido / expirado."}), 400
+    if info.get("terminal"):
+        return jsonify({"ok": False, "error": "Código já utilizado."}), 400
+    info["terminal"] = terminal
+    _pair_save(db)
+    # já grava playlist “vazia” se não existir (opcional)
+    pfile = PLAYLISTS_DIR / f"{terminal}.json"
+    if not pfile.exists():
+        write_json(pfile, [])
+    return jsonify({"ok": True})
+
+@app.route("/api/v1/pair/poll", methods=["GET"])
+def pair_poll():
+    """ BOX fica consultando até receber terminal """
+    code = (request.args.get("code") or "").strip().upper()
+    if not code:
+        return jsonify({"ok": False, "error": "code é obrigatório."}), 400
+    db = _cleanup_pairings()
+    info = db.get("codes", {}).get(code)
+    if not info:
+        return jsonify({"ok": False, "error": "Código inválido / expirado."}), 404
+    return jsonify({"ok": True, "terminal": info.get("terminal")})
+# -------------------------------------------------------
 
 @app.route("/healthz")
 def healthz():
