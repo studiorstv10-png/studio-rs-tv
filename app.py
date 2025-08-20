@@ -526,3 +526,127 @@ def ping():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
     app.run(host="0.0.0.0", port=port)
+
+# --- NOVO: ativação/monitoramento ---
+TOKENS_JSON = DATA / "tokens.json"         # {token:{code,device,created_at}}
+STATUS_JSON = DATA / "status.json"         # {code:{last_seen, ip, app_ver, net_ok, playing, errors}}
+def _new_token(): return uuid.uuid4().hex
+
+@app.get("/api/v1/support")
+def support():
+    return jsonify({
+        "name": os.getenv("SUPPORT_NAME", "Suporte"),
+        "whats": os.getenv("SUPPORT_WHATS", ""),
+        "whats_url": f"https://wa.me/{os.getenv('SUPPORT_WHATS','')}?text={os.getenv('SUPPORT_WHATS_MSG','')}"
+    })
+
+@app.post("/api/v1/activate")
+def activate():
+    body = request.get_json(force=True, silent=True) or {}
+    code = (body.get("code") or "").strip()
+    device = body.get("device", {})  # ex.: {"model":"Mi TV Stick","serial":"ABC123","app_ver":"1.0.0"}
+
+    if not code:
+        return jsonify({"ok": False, "error": "missing_code"}), 400
+
+    terms = _load_json(TERMINALS_JSON, {})
+    if code not in terms:
+        return jsonify({"ok": False, "error": "unknown_terminal"}), 404
+
+    tokens = _load_json(TOKENS_JSON, {})
+    token = _new_token()
+    tokens[token] = {"code": code, "device": device, "created_at": _now_iso()}
+    _save_json(TOKENS_JSON, tokens)
+
+    # cria status inicial
+    status = _load_json(STATUS_JSON, {})
+    status.setdefault(code, {})
+    status[code].update({"app_ver": device.get("app_ver"), "last_seen": None, "ip": None})
+    _save_json(STATUS_JSON, status)
+
+    return jsonify({"ok": True, "token": token, "config_url": f"/api/v1/config?token={token}"})
+
+@app.get("/api/v1/config")
+def config_player():
+    token = (request.args.get("token") or "").strip()
+    code = (request.args.get("code") or "").strip()
+
+    if token:
+        tokens = _load_json(TOKENS_JSON, {})
+        if token not in tokens:
+            return jsonify({"ok": False, "error": "invalid_token"}), 403
+        code = tokens[token]["code"]
+
+    if not code:
+        return jsonify({"ok": False, "error": "missing_code"}), 400
+
+    p = PLAYLISTS_DIR / f"{code}.json"
+    playlist = _load_json(p, {"code": code, "items": []})
+    return jsonify({
+        "name": BRAND_NAME,
+        "primary_color": BRAND_COLOR,
+        "logo": BRAND_LOGO_URL or None,
+        "playlist": playlist.get("items", []),
+        "poll_seconds": POLL_SECONDS,
+        "status": "ok",
+        "terminal": {"code": code},
+        "updated_at": _now_iso()
+    })
+
+@app.post("/api/v1/heartbeat")
+def heartbeat():
+    body = request.get_json(force=True, silent=True) or {}
+    token = (body.get("token") or "").strip()
+    tokens = _load_json(TOKENS_JSON, {})
+    if token not in tokens:
+        return jsonify({"ok": False, "error": "invalid_token"}), 403
+
+    code = tokens[token]["code"]
+    status = _load_json(STATUS_JSON, {})
+    s = status.setdefault(code, {})
+    s.update({
+        "last_seen": _now_iso(),
+        "ip": request.headers.get("X-Forwarded-For", request.remote_addr),
+        "app_ver": body.get("app_ver") or s.get("app_ver"),
+        "net_ok": bool(body.get("net_ok", True)),
+        "playing": body.get("playing"),          # ex.: {"idx": 2, "type": "video", "url": "..."}
+        "errors": body.get("errors", [])         # lista de strings curtas
+    })
+    _save_json(STATUS_JSON, status)
+
+    # dica pro player: se quiser forçar reload de playlist, devolvemos “config_version”
+    return jsonify({"ok": True, "server_time": _now_iso()})
+
+@app.get("/api/v1/admin/status")
+def admin_status():
+    terms = _load_json(TERMINALS_JSON, {})
+    stat = _load_json(STATUS_JSON, {})
+    out = []
+    now = datetime.now(timezone.utc)
+    for code, t in terms.items():
+        s = stat.get(code, {})
+        last = s.get("last_seen")
+        online = False
+        minutes = None
+        if last:
+            try:
+                dt = datetime.fromisoformat(last)
+                diff = (now - dt).total_seconds()
+                online = diff < POLL_SECONDS * 2.5
+                minutes = round(diff/60, 2)
+            except Exception:
+                pass
+        out.append({
+            "code": code,
+            "name": t.get("name"),
+            "group": t.get("group"),
+            "online": online,
+            "last_seen": last,
+            "minutes_ago": minutes,
+            "ip": s.get("ip"),
+            "app_ver": s.get("app_ver"),
+            "net_ok": s.get("net_ok", True),
+            "playing": s.get("playing", None),
+        })
+    return jsonify({"ok": True, "data": out})
+
