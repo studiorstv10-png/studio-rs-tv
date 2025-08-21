@@ -1,465 +1,316 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{{ (branding.name if branding else 'Studio RS TV') }} — Painel</title>
+  <title>{{ branding.name or 'Studio RS TV' }} — Painel</title>
   <style>
     :root{
-      --bg:#0e1621; --card:#121c29; --muted:#7d8da8; --text:#e9eef9;
-      --brand: {{ (branding.primary_color if branding and branding.primary_color) or '#0d1b2a' }};
-      --ok:#1fbe7c; --warn:#ffb020; --danger:#ff5d5d; --line:#1b2838;
+      --bg:#0b1220; --card:#121a2b; --muted:#94a3b8;
+      --text:#e2e8f0; --accent: {{ branding.primary_color or '#0d1b2a' }};
+      --ok:#16a34a; --warn:#f59e0b; --err:#ef4444;
     }
-    *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial}
-    a{color:#9cc4ff;text-decoration:none}
-    header{display:flex;gap:14px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(13,27,42,.35),transparent)}
+    *{box-sizing:border-box} body{margin:0;font:14px/1.4 ui-sans-serif,system-ui;background:var(--bg);color:var(--text)}
+    header{padding:16px 20px;background:var(--card);display:flex;gap:16px;align-items:center;border-bottom:1px solid #1f2937}
     header img{height:28px}
-    header .brand{font-weight:700}
-    header .spacer{flex:1}
-    header .pill{padding:6px 10px;border-radius:10px;background:var(--card);color:var(--muted);border:1px solid var(--line)}
-    main{padding:18px;display:grid;gap:16px;grid-template-columns:1.2fr .8fr}
-    section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
-    h2{font-size:16px;margin:0 0 10px}
-    .row{display:flex;gap:8px;align-items:center}
-    .grid2{display:grid;gap:10px;grid-template-columns:repeat(2,1fr)}
-    .grid3{display:grid;gap:10px;grid-template-columns:repeat(3,1fr)}
-    input,select,button,textarea{padding:10px;border-radius:8px;border:1px solid var(--line);background:#0a121c;color:var(--text)}
-    input::placeholder, textarea::placeholder{color:#6c7a92}
-    button{cursor:pointer;background:var(--brand);border:1px solid rgba(255,255,255,.06)}
-    button.ghost{background:transparent}
-    button.secondary{background:#17314e}
-    button.warn{background:var(--warn)}
-    button.danger{background:var(--danger)}
-    small,h6{color:var(--muted);margin:0}
-    ul.list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto}
-    .item{display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid var(--line);background:#0a121c;padding:8px;border-radius:8px}
-    .muted{color:var(--muted)}
-    .tag{background:#0a1624;border:1px solid var(--line);padding:2px 8px;border-radius:999px;font-size:12px;color:#a9b7cc}
-    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .cards{display:grid;gap:10px;grid-template-columns:repeat(3,1fr)}
-    .cardBox{border:1px solid var(--line);background:#0a121c;border-radius:10px;padding:10px}
-    .badge-ok{color:#1fbe7c}.badge-off{color:#ff7a7a}
-    hr{border:0;border-top:1px solid var(--line);margin:12px 0}
-    .monospace{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-    .right{justify-content:flex-end}
-    .w100{width:100%}
-    .gap{gap:10px}
-    .hidden{display:none}
-    @media (max-width:1100px){main{grid-template-columns:1fr}}
+    header h1{font-size:16px;margin:0;font-weight:600}
+    main{max-width:1100px;margin:24px auto;padding:0 16px;display:grid;gap:16px}
+    .card{background:var(--card);border:1px solid #1f2937;border-radius:10px;padding:16px}
+    .row{display:grid;gap:10px}
+    .row-2{grid-template-columns:1fr 1fr}
+    label{font-size:12px;color:var(--muted)}
+    input,select,button{width:100%;padding:10px;border-radius:8px;border:1px solid #263244;background:#0e1626;color:var(--text)}
+    button{cursor:pointer;background:var(--accent);border-color:transparent}
+    .btn-secondary{background:#19243a}
+    .btn-ok{background:var(--ok)} .btn-warn{background:var(--warn)} .btn-ghost{background:#0e1626}
+    .list{max-height:280px;overflow:auto;border:1px solid #23314d;border-radius:8px}
+    .item{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid #1f2a46}
+    .item small{color:var(--muted)}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#12203c;color:#cbd5e1;border:1px solid #213055}
+    .stack{display:flex;gap:8px;flex-wrap:wrap}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
+    .hr{height:1px;background:#1f2a46;margin:8px 0}
+    .toast{position:fixed;right:16px;bottom:16px;background:#111827;color:#fff;border:1px solid #374151;padding:10px 14px;border-radius:8px}
+    .mini{font-size:12px}
   </style>
 </head>
 <body>
+  <header>
+    {% if branding.logo %}
+      <img src="{{ branding.logo }}" alt="logo">
+    {% endif %}
+    <h1>{{ branding.name or 'Studio RS TV' }} — Painel</h1>
+    <span class="pill">{{ branding.primary_color or '#0d1b2a' }}</span>
+    <div style="margin-left:auto"></div>
+    <a class="pill" href="{{ support_link }}" target="_blank">Suporte WhatsApp</a>
+  </header>
 
-<header>
-  {% if branding and branding.logo %}
-    <img src="{{ branding.logo }}" alt="logo" />
-  {% endif %}
-  <div class="brand">{{ (branding.name if branding else 'Studio RS TV') }}</div>
-  <span class="spacer"></span>
-  <a class="pill" href="{{ support_link if support_link else 'https://wa.me/5512996273989' }}" target="_blank">Suporte WhatsApp</a>
-</header>
-
-<main>
-
-  <!-- COLUNA ESQUERDA -->
-  <div class="col">
-
-    <!-- CLIENTE & TERMINAIS -->
+  <main>
+    <!-- CLIENTE / TERMINAIS -->
     <section class="card">
-      <h2>Cliente & Terminais</h2>
-      <div class="grid3">
-        <input id="c_name" placeholder="Nome do cliente (ex.: João)" />
-        <input id="c_code" placeholder="Código (ex.: 001)" />
-        <input id="c_qty" type="number" min="1" value="1" placeholder="Qtd. terminais" />
+      <h3 style="margin-top:0">Cliente & Terminais</h3>
+      <div class="row row-2">
+        <div>
+          <label>Nome do cliente</label>
+          <input id="cliName" placeholder="ex.: João" />
+        </div>
+        <div>
+          <label>Código do cliente</label>
+          <input id="cliCode" placeholder="ex.: 001" />
+        </div>
       </div>
-      <div class="row gap" style="margin-top:8px">
-        <input id="c_days" type="number" min="1" value="30" placeholder="Licença (dias)" />
-        <button id="c_create">Criar/Atualizar</button>
-        <button class="ghost" id="expandAll">Expandir todos</button>
+      <div class="row row-2">
+        <div>
+          <label>Qtd de terminais</label>
+          <input id="cliQty" type="number" min="1" value="1" />
+        </div>
+        <div>
+          <label>Licença (dias)</label>
+          <input id="cliDays" type="number" min="1" value="30" />
+        </div>
       </div>
-      <hr>
-      <div class="row gap">
-        <select id="top_terminal" class="w100"></select>
-        <button class="secondary" id="btnLoadTop">Carregar Playlist</button>
+      <div class="stack" style="margin-top:10px">
+        <button id="btnCreate" style="max-width:220px">Criar/Atualizar</button>
+        <button id="btnReloadTerms" class="btn-secondary" style="max-width:180px">Recarregar terminais</button>
+        <span id="createMsg" class="muted"></span>
+      </div>
+
+      <div class="hr"></div>
+      <div class="row row-2">
+        <div>
+          <label>Selecionar terminal (topo)</label>
+          <select id="selTop"></select>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <button id="btnLoadTop" class="btn-secondary" style="max-width:200px">Carregar Playlist</button>
+          <span id="topInfo" class="muted mini"></span>
+        </div>
       </div>
     </section>
 
     <!-- UPLOADS -->
     <section class="card">
-      <h2>Uploads</h2>
-      <div class="row gap">
-        <input type="file" id="u_files" multiple />
-        <button id="u_send">Enviar</button>
+      <h3 style="margin-top:0">Uploads</h3>
+      <div class="stack">
+        <input id="inpFiles" type="file" multiple style="max-width:420px" />
+        <button id="btnUpload" style="max-width:140px">Enviar</button>
+        <button id="btnList" class="btn-secondary" style="max-width:180px">Atualizar lista</button>
+        <span id="uploadMsg" class="muted"></span>
       </div>
-      <small>Formatos aceitos: mp4, mov, mkv, webm, jpg, jpeg, png, gif, webp</small>
-      <ul id="u_list" class="list" style="margin-top:8px"></ul>
+      <div id="uploadList" class="list" style="margin-top:10px"></div>
     </section>
 
     <!-- PLAYLIST -->
     <section class="card">
-      <h2>Playlist por Terminal</h2>
-      <div class="row gap" style="align-items:center">
-        <select id="pl_terminal" class="w100"></select>
-        <label class="row" style="gap:6px;margin-left:6px">
-          <input type="checkbox" id="autoLoadPl" checked />
-          Auto-carregar ao trocar
-        </label>
-        <input id="pl_campaign" class="w100" placeholder="Nome da campanha (opcional)" />
+      <h3 style="margin-top:0">Playlist por Terminal</h3>
+      <div class="grid-2">
+        <div>
+          <label>Terminal (playlist)</label>
+          <select id="selTerm"></select>
+        </div>
+        <div>
+          <label>Nome da campanha (opcional)</label>
+          <input id="inpCampaign" placeholder="ex.: Promo Agosto" />
+        </div>
       </div>
 
-      <div class="toolbar" style="margin-top:8px">
-        <button class="secondary" id="btnSyncTop">Sincronizar com topo</button>
-        <button id="btnLoad">Carregar Playlist</button>
-        <button class="warn" id="btnClear">Limpar builder</button>
+      <div class="stack" style="margin-top:8px">
+        <button id="btnSyncTop" class="btn-secondary">Sincronizar com topo</button>
+        <button id="btnLoadPL" class="btn-secondary">Carregar Playlist</button>
+        <button id="btnClear" class="btn-ghost">Limpar builder</button>
       </div>
 
-      <hr>
-
-      <div class="grid3">
-        <select id="pl_type">
+      <div class="row" style="margin-top:8px">
+        <label>Mídia/Tipo</label>
+        <select id="selType">
           <option value="video">Vídeo</option>
           <option value="image">Imagem</option>
           <option value="rss">RSS</option>
         </select>
-
-        <select id="picker_select"></select>
-
-        <input id="pl_url" placeholder="URL ou /static/uploads/arquivo.ext" />
+        <select id="selUpload"></select>
+        <input id="inpURL" placeholder="URL ou /static/uploads/arquivo.ext" />
+        <input id="inpDur" type="number" min="1" placeholder="Duração (s) p/ imagem/RSS" />
+        <button id="btnAdd" class="btn-ok">Adicionar</button>
       </div>
 
-      <div class="row gap" style="margin-top:8px">
-        <input id="pl_dur" type="number" min="0" value="10" placeholder="Duração para imagem/RSS (s)" />
-        <button id="btnAdd">Adicionar</button>
-        <button id="btnSave">Salvar Playlist</button>
+      <div id="builder" class="list" style="margin-top:10px"></div>
+      <div class="stack" style="margin-top:10px">
+        <button id="btnSave" class="btn-ok">Salvar Playlist</button>
+        <span id="saveMsg" class="muted"></span>
       </div>
-
-      <ul id="pl_list" class="list" style="margin-top:10px"></ul>
-      <small id="editing" class="muted"></small>
     </section>
 
     <!-- DIAGNÓSTICO -->
     <section class="card">
-      <h2>Diagnóstico</h2>
-      <div class="toolbar">
-        <button class="secondary" id="btnPing">/api/v1/ping</button>
-        <div class="row gap">
-          <input id="cfg_code" placeholder="code (ex.: 001)" style="width:160px" />
-          <button class="secondary" id="btnCfg">/api/v1/config</button>
-        </div>
+      <h3 style="margin-top:0">Diagnóstico</h3>
+      <div class="stack">
+        <button id="btnPing" class="btn-secondary">/api/v1/ping</button>
+        <button id="btnViewCfg" class="btn-secondary">/api/v1/config</button>
       </div>
-      <pre id="diag" class="monospace" style="margin-top:10px;white-space:pre-wrap"></pre>
+      <pre id="diag" class="list" style="padding:10px;white-space:pre-wrap"></pre>
     </section>
+  </main>
 
-  </div>
+  <div id="toast" class="toast" style="display:none"></div>
 
-  <!-- COLUNA DIREITA -->
-  <div class="col">
-    <section class="card">
-      <h2>Clientes</h2>
-      <div id="cards" class="cards"></div>
-    </section>
-  </div>
+  <script>
+    // helpers
+    const $ = sel => document.querySelector(sel);
+    const toast = (msg) => { const t = $("#toast"); t.innerText = msg; t.style.display='block'; setTimeout(()=>t.style.display='none', 2500); }
+    const api = (url, opts={}) =>
+      fetch(url, Object.assign({headers: {'Accept':'application/json'}}, opts))
+      .then(r => r.ok ? r.json() : r.json().catch(()=>({})).then(j=>Promise.reject(j.error||r.statusText)));
 
-</main>
+    const selTop = $("#selTop");
+    const selTerm = $("#selTerm");
+    const uploadList = $("#uploadList");
+    const selUpload = $("#selUpload");
+    const builder = $("#builder");
 
-<script>
-  // ========= helpers =========
-  const qs  = (s, el=document) => el.querySelector(s);
-  const qsa = (s, el=document) => [...el.querySelectorAll(s)];
-  const api = (path, opt={}) => fetch(path, Object.assign({
-      headers: {'Content-Type':'application/json'}
-  }, opt));
+    let currentUploads = [];
+    let building = []; // [{type,url,duration?}]
 
-  const STATE = {
-    currentCode: null,
-    uploads: [],
-    playlist: []
-  };
+    const renderUploads = () => {
+      uploadList.innerHTML = "";
+      selUpload.innerHTML = "";
+      currentUploads.forEach(u=>{
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div><b>${u.type}</b><br><small>${u.url}</small></div>
+          <div class="stack"><button class="btn-secondary mini" data-url="${u.url}" data-type="${u.type}">usar</button></div>`;
+        uploadList.appendChild(div);
 
-  const fmtName = (u) => {
-    try{
-      const p = new URL(u, location.origin);
-      return decodeURIComponent(p.pathname.split('/').pop());
-    }catch(e){
-      return u.split('/').pop();
-    }
-  };
-
-  // ========= UI render =========
-
-  function renderUploads(){
-    const ul = qs('#u_list'); ul.innerHTML = '';
-    STATE.uploads.forEach(v=>{
-      const li = document.createElement('li');
-      li.className = 'item';
-      li.innerHTML = `
-        <div class="row" style="gap:8px">
-          <span class="tag">${v.type||'file'}</span>
-          <div class="muted">${fmtName(v.url||v)}</div>
-        </div>
-        <div class="row" style="gap:6px">
-          <a class="ghost" href="${v.url||v}" target="_blank"><button class="ghost">abrir</button></a>
-          <button class="secondary" onclick="useUpload('${v.url||v}')">usar</button>
-        </div>`;
-      ul.appendChild(li);
-    });
-  }
-
-  function fillPicker(){
-    const sel = qs('#picker_select'); sel.innerHTML = '';
-    const optEmpty = document.createElement('option');
-    optEmpty.value = ''; optEmpty.textContent = '— escolher dos uploads…';
-    sel.appendChild(optEmpty);
-
-    STATE.uploads.forEach(v=>{
-      const o = document.createElement('option');
-      o.value = v.url||v; o.textContent = fmtName(v.url||v);
-      sel.appendChild(o);
-    });
-    sel.onchange = ()=>{
-      const v = sel.value;
-      if (v) qs('#pl_url').value = v;
-    };
-  }
-
-  function showEditing(code){
-    qs('#editing').textContent = code ? `Editando: ${code}` : '';
-  }
-
-  function clearBuilder(){
-    STATE.playlist = [];
-    renderPlaylist();
-  }
-
-  function renderPlaylist(){
-    const ul = qs('#pl_list'); ul.innerHTML = '';
-    STATE.playlist.forEach((it, idx)=>{
-      const li = document.createElement('li');
-      li.className = 'item';
-      li.innerHTML = `
-        <div class="row" style="gap:8px">
-          <span class="tag">${it.type}</span>
-          <div class="muted">${fmtName(it.url||'')}</div>
-        </div>
-        <div class="row" style="gap:6px">
-          <input type="number" min="0" value="${it.duration||0}" style="width:80px" 
-                 onchange="STATE.playlist[${idx}].duration = this.valueAsNumber||0" title="duração (s) para imagens/RSS" />
-          <button class="ghost" title="subir" onclick="moveItem(${idx},-1)">↑</button>
-          <button class="ghost" title="descer" onclick="moveItem(${idx},+1)">↓</button>
-          <button class="danger" onclick="removeItem(${idx})">remover</button>
-        </div>`;
-      ul.appendChild(li);
-    });
-  }
-
-  function moveItem(i, dir){
-    const j = i + dir;
-    if (j<0 || j>=STATE.playlist.length) return;
-    const a = STATE.playlist[i]; STATE.playlist[i]=STATE.playlist[j]; STATE.playlist[j]=a;
-    renderPlaylist();
-  }
-  function removeItem(i){
-    STATE.playlist.splice(i,1); renderPlaylist();
-  }
-
-  function renderCards(list){
-    const wrap = qs('#cards'); wrap.innerHTML = '';
-    list.forEach(t=>{
-      const div = document.createElement('div');
-      div.className = 'cardBox';
-      div.innerHTML = `
-        <div class="row" style="justify-content:space-between">
-          <div>
-            <b>${t.display||t.code}</b>
-            <div class="muted">${t.group||'-'}</div>
-          </div>
-          <div class="row" style="gap:6px">
-            <span class="${t.online?'badge-ok':'badge-off'}">${t.online?'online':'offline'}</span>
-            <button class="secondary" onclick="manage('${t.code}')">Gerenciar</button>
-          </div>
-        </div>`;
-      wrap.appendChild(div);
-    });
-  }
-
-  // ========= server fetchers =========
-
-  async function refreshSelects(){
-    // lista de terminais
-    const r = await api('/api/v1/terminal?list=1');
-    const j = await r.json();
-    const list = j.terminals || j.data || j || [];
-    const fill = (selId)=>{
-      const sel = qs(selId);
-      sel.innerHTML = '';
-      list.forEach(t=>{
-        const o = document.createElement('option');
-        o.value = t.code; o.textContent = `${t.display||t.name||t.code}`;
-        sel.appendChild(o);
+        const opt = document.createElement("option");
+        opt.value = u.url; opt.textContent = `${u.type.toUpperCase()} • ${u.url}`;
+        selUpload.appendChild(opt);
+      });
+      uploadList.querySelectorAll("button[data-url]").forEach(btn=>{
+        btn.onclick = () => {
+          $("#selType").value = btn.dataset.type;
+          $("#inpURL").value = btn.dataset.url;
+          if(btn.dataset.type !== "video") $("#inpDur").value = 10;
+        };
       });
     };
-    fill('#top_terminal');
-    fill('#pl_terminal');
-    renderCards(list);
-    return list;
-  }
 
-  async function loadUploads(){
-    const r = await api('/api/v1/uploads');
-    const j = await r.json();
-    STATE.uploads = j.uploads || j.data || [];
-    renderUploads(); fillPicker();
-  }
-
-  async function loadPlaylistFor(code){
-    const r = await api('/api/v1/config?code=' + encodeURIComponent(code));
-    const j = await r.json();
-    STATE.currentCode = code;
-    STATE.playlist = (j.ok ? (j.playlist || []) : []);
-    qs('#pl_campaign').value = (j.ok ? (j.campaign||'') : '');
-    renderPlaylist();
-    showEditing(code);
-  }
-
-  async function manage(code){
-    // Detalhes do terminal
-    const r = await api('/api/v1/terminal?code=' + encodeURIComponent(code));
-    const j = await r.json();
-    await refreshSelects();
-    qs('#top_terminal').value = code;
-    qs('#pl_terminal').value  = code;
-
-    // uploads atuais
-    STATE.uploads = j.uploads || [];
-    renderUploads(); fillPicker();
-
-    // carrega playlist do código
-    await loadPlaylistFor(code);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  // ========= actions =========
-
-  // criar/atualizar cliente + terminais
-  qs('#c_create').onclick = async ()=>{
-    const payload = {
-      name:  qs('#c_name').value.trim(),
-      code:  qs('#c_code').value.trim(),
-      qty:   (qs('#c_qty').valueAsNumber||1),
-      days:  (qs('#c_days').valueAsNumber||30)
+    const renderBuilder = () => {
+      builder.innerHTML = "";
+      building.forEach((it, i)=>{
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div><b>${it.type}</b> ${it.duration?`<small>(${it.duration}s)</small>`:''}<br><small>${it.url}</small></div>
+          <div class="stack">
+            <button class="btn-secondary mini" data-up="${i}">↑</button>
+            <button class="btn-secondary mini" data-down="${i}">↓</button>
+            <button class="btn-ghost mini" data-del="${i}">remover</button>
+          </div>`;
+        builder.appendChild(div);
+      });
+      builder.querySelectorAll("button[data-up]").forEach(b=>b.onclick=()=>{
+        const i=+b.dataset.up; if(i>0){ [building[i-1],building[i]]=[building[i],building[i-1]]; renderBuilder(); }
+      });
+      builder.querySelectorAll("button[data-down]").forEach(b=>b.onclick=()=>{
+        const i=+b.dataset.down; if(i<building.length-1){ [building[i+1],building[i]]=[building[i],building[i+1]]; renderBuilder(); }
+      });
+      builder.querySelectorAll("button[data-del]").forEach(b=>b.onclick=()=>{
+        building.splice(+b.dataset.del,1); renderBuilder();
+      });
     };
-    if (!payload.name || !payload.code) { alert('Informe nome e código.'); return; }
-    const r = await api('/api/v1/terminal', {method:'POST', body:JSON.stringify(payload)});
-    const j = await r.json();
-    if (!j.ok) return alert(j.error||'Erro ao criar');
-    await refreshSelects();
-    alert('Cliente/terminais criados.');
-  };
 
-  // enviar uploads
-  qs('#u_send').onclick = async ()=>{
-    const f = qs('#u_files').files;
-    if (!f || !f.length) return alert('Escolha arquivos.');
-    const fd = new FormData();
-    [...f].forEach(x=>fd.append('files', x));
-    const r = await fetch('/api/v1/upload', {method:'POST', body:fd});
-    const j = await r.json();
-    if (!j.ok) return alert(j.error||'Falha ao enviar');
-    await loadUploads();
-  };
+    // carga inicial
+    const loadUploads = () => api('/api/v1/uploads').then(j=>{ currentUploads=j.uploads||[]; renderUploads(); }).catch(e=>toast('Erro uploads: '+e));
+    const loadTerms = () => api('/api/v1/terminal?list=1').then(j=>{
+      const list = j.terminals||[];
+      const fill = (sel) => { sel.innerHTML=""; list.forEach(t=>{ const o=document.createElement('option'); o.value=t.code; o.textContent=t.display; sel.appendChild(o); }); }
+      fill(selTop); fill(selTerm);
+    }).catch(e=>toast('Erro terminais: '+e));
 
-  window.useUpload = (url)=>{
-    qs('#pl_url').value = url;
-  };
+    // eventos principais
+    document.addEventListener('DOMContentLoaded', ()=>{
+      loadTerms(); loadUploads();
 
-  // adicionar ao builder
-  qs('#btnAdd').onclick = ()=>{
-    const type = qs('#pl_type').value;
-    const url  = qs('#pl_url').value.trim();
-    const dur  = qs('#pl_dur').valueAsNumber||0;
-    if (!url) return alert('Informe URL/arquivo.');
-    const item = {type, url};
-    if (type!=='video') item.duration = dur;
-    STATE.playlist.push(item);
-    renderPlaylist();
-    qs('#pl_url').value = '';
-  };
+      // CRIAR / ATUALIZAR
+      $("#btnCreate").onclick = () => {
+        const body = {
+          name: $("#cliName").value.trim(),
+          code: $("#cliCode").value.trim(),
+          qty:  parseInt($("#cliQty").value||"1",10),
+          days: parseInt($("#cliDays").value||"30",10)
+        };
+        if(!body.name || !body.code) return toast("Preencha nome e código");
+        api('/api/v1/terminal', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+          .then(j=>{ $("#createMsg").innerText = `Criado(s): ${j.created}`; toast('✓ Terminais criados'); return loadTerms(); })
+          .catch(e=>toast('Erro criar: '+e));
+      };
 
-  // salvar playlist
-  qs('#btnSave').onclick = async ()=>{
-    const code = qs('#pl_terminal').value;
-    if (!code) return alert('Escolha um terminal.');
-    const payload = {
-      code,
-      campaign: qs('#pl_campaign').value.trim(),
-      items: STATE.playlist
-    };
-    const r = await api('/api/v1/playlist', {method:'POST', body:JSON.stringify(payload)});
-    const j = await r.json();
-    if (!j.ok) return alert(j.error||'Erro ao salvar');
-    alert('Playlist salva para ' + code);
-    await loadPlaylistFor(code);
-  };
+      $("#btnReloadTerms").onclick = ()=> loadTerms();
 
-  // limpar builder
-  qs('#btnClear').onclick = ()=>{ clearBuilder(); };
+      // carregar playlist do topo / do seletor
+      const loadPlaylist = (code, infoEl) => {
+        return api('/api/v1/terminal?code='+encodeURIComponent(code))
+          .then(j=>{
+            building = (j.playlist||[]).slice();
+            renderBuilder();
+            if(infoEl) infoEl.innerText = `Itens: ${building.length}`;
+          })
+          .catch(e=>toast('Erro playlist: '+e));
+      };
+      $("#btnLoadTop").onclick = ()=> loadPlaylist(selTop.value, $("#topInfo"));
+      $("#btnLoadPL").onclick  = ()=> loadPlaylist(selTerm.value);
 
-  // carregar playlist (botão)
-  qs('#btnLoad').onclick = async ()=>{ await loadPlaylistFor(qs('#pl_terminal').value); };
+      // SYNC COM TOPO
+      $("#btnSyncTop").onclick = ()=> { selTerm.value = selTop.value; loadPlaylist(selTerm.value); };
 
-  // sincr com topo
-  qs('#btnSyncTop').onclick = async ()=>{
-    const code = qs('#top_terminal').value;
-    qs('#pl_terminal').value = code;
-    await loadPlaylistFor(code);
-  };
+      // LIMPAR
+      $("#btnClear").onclick = ()=> { building=[]; renderBuilder(); };
 
-  // carregar com topo (botão acima)
-  qs('#btnLoadTop').onclick = async ()=>{
-    const code = qs('#top_terminal').value;
-    await loadPlaylistFor(code);
-  };
+      // UPLOAD
+      $("#btnUpload").onclick = ()=>{
+        const files = $("#inpFiles").files;
+        if(!files || !files.length) return toast("Escolha arquivo(s)");
+        const fd = new FormData();
+        [...files].forEach(f=>fd.append('files', f));
+        api('/api/v1/upload', {method:'POST', body:fd})
+          .then(_=>{ $("#uploadMsg").innerText="Enviado"; loadUploads(); toast('✓ Upload concluído'); })
+          .catch(e=>toast('Erro upload: '+e));
+      };
+      $("#btnList").onclick = ()=> loadUploads();
 
-  // >>> Auto-carregar quando trocar o terminal da playlist
-  qs('#pl_terminal').addEventListener('change', async ()=>{
-    const code = qs('#pl_terminal').value;
-    if (STATE.currentCode && STATE.currentCode !== code && STATE.playlist.length){
-      const ok = confirm('Trocar de terminal? O builder atual será substituído pela playlist do novo terminal.');
-      if (!ok){ qs('#pl_terminal').value = STATE.currentCode; return; }
-    }
-    if (qs('#autoLoadPl').checked){
-      await loadPlaylistFor(code);  // carrega a playlist do novo terminal
-    }else{
-      STATE.currentCode = code;
-      clearBuilder();               // só limpa para começar do zero
-      showEditing(code);
-    }
-  });
+      // ADICIONAR ITEM
+      $("#btnAdd").onclick = ()=>{
+        const type = $("#selType").value;
+        const url  = ($("#inpURL").value || $("#selUpload").value || "").trim();
+        if(!url) return toast("Informe URL ou escolha dos uploads");
+        const item = {type, url};
+        if(type!=='video'){
+          const d = parseInt($("#inpDur").value||"0",10);
+          item.duration = d>0? d : 10;
+        }
+        building.push(item);
+        renderBuilder();
+      };
 
-  // diagnóstico
-  qs('#btnPing').onclick = async ()=>{
-    const r = await api('/api/v1/ping');
-    qs('#diag').textContent = JSON.stringify(await r.json(), null, 2);
-  };
-  qs('#btnCfg').onclick = async ()=>{
-    const code = qs('#cfg_code').value.trim();
-    const r = await api('/api/v1/config?code='+encodeURIComponent(code||'DEMO'));
-    qs('#diag').textContent = JSON.stringify(await r.json(), null, 2);
-  };
+      // SALVAR PLAYLIST
+      $("#btnSave").onclick = ()=>{
+        const code = selTerm.value;
+        if(!code) return toast("Escolha um terminal");
+        const body = { code, campaign: $("#inpCampaign").value || null, items: building };
+        api('/api/v1/playlist', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+          .then(_=>{ $("#saveMsg").innerText="Playlist salva"; toast('✓ Playlist salva'); })
+          .catch(e=>toast('Erro salvar: '+e));
+      };
 
-  // expandir todos (cartões)
-  qs('#expandAll').onclick = async ()=>{
-    await refreshSelects();
-    alert('Lista atualizada.');
-  };
-
-  // ========= boot =========
-  (async function boot(){
-    await refreshSelects();
-    await loadUploads();
-    const plSel = qs('#pl_terminal');
-    if (plSel.value){ await loadPlaylistFor(plSel.value); }
-  })();
-</script>
+      // DIAG
+      $("#btnPing").onclick = ()=> api('/api/v1/ping').then(j=>$("#diag").textContent=JSON.stringify(j,null,2));
+      $("#btnViewCfg").onclick = ()=> {
+        const code = selTerm.value || selTop.value;
+        if(!code) return toast("Escolha um terminal");
+        api('/api/v1/config?code='+encodeURIComponent(code)).then(j=>$("#diag").textContent=JSON.stringify(j,null,2));
+      };
+    });
+  </script>
 </body>
 </html>
