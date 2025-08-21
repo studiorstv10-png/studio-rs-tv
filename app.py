@@ -1,30 +1,31 @@
 import os, json, datetime, random, string
 from pathlib import Path
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template
 
-# -----------------------------------------------------------------------------
-# Configurações
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Paths & diretórios
+# ---------------------------------------------------------------------------
 APP_ROOT   = Path(__file__).parent.resolve()
 STATIC_DIR = APP_ROOT / "static"
 UPLOAD_DIR = STATIC_DIR / "uploads"
 
-# Onde vamos persistir os JSONs (mude em Render via env var e um Disk)
-DATA_DIR   = Path(os.getenv("DATA_DIR", APP_ROOT / "data"))
-PLAY_DIR   = DATA_DIR / "playlists"
+DATA_DIR = Path(os.getenv("DATA_DIR", APP_ROOT / "data"))  # monte um Disk e aponte aqui
+PLAY_DIR = DATA_DIR / "playlists"
+
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 PLAY_DIR.mkdir(parents=True, exist_ok=True)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-CLIENTS_FILE   = DATA_DIR / "clients.json"   # {"clients":[{code,name,terminals:[1,2],license_until: "ISO"}]}
-BRANDING_FILE  = DATA_DIR / "branding.json"  # opcional
-PAIRS_FILE     = DATA_DIR / "pairs.json"     # {"<pairCode>": {"client_code":..., "term":...}}
+CLIENTS_FILE  = DATA_DIR / "clients.json"   # {"clients":[{code,name,terminals:[1,2],license_until}]}
+BRANDING_FILE = DATA_DIR / "branding.json"
+PAIRS_FILE    = DATA_DIR / "pairs.json"
+STATUS_FILE   = DATA_DIR / "status.json"    # {"001-01":{"last_seen": "...", "online":true, "playing": "..."}}
 
 ALLOWED_EXT = {".mp4",".mov",".mkv",".webm",".png",".jpg",".jpeg",".gif",".webp",".mp3",".wav"}
 
-# -----------------------------------------------------------------------------
-# Utilidades
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 def utcnow_iso():
     return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
 
@@ -49,16 +50,12 @@ def safe_filename(name: str) -> str:
 
 def guess_type(p: Path) -> str:
     ext = p.suffix.lower()
-    if ext in {".png",".jpg",".jpeg",".gif",".webp"}:
-        return "image"
-    if ext in {".mp4",".mov",".mkv",".webm"}:
-        return "video"
-    if ext in {".mp3",".wav"}:
-        return "audio"
+    if ext in {".png",".jpg",".jpeg",".gif",".webp"}: return "image"
+    if ext in {".mp4",".mov",".mkv",".webm"}:         return "video"
+    if ext in {".mp3",".wav"}:                        return "audio"
     return "file"
 
 def parse_code(code: str):
-    """Retorna (client_code, term_int) a partir de '001-02'."""
     code = (code or "").strip()
     if "-" not in code:
         return None, None
@@ -69,20 +66,19 @@ def parse_code(code: str):
     except Exception:
         return None, None
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Branding
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 def get_branding():
     b = load_json(BRANDING_FILE, {})
-    # sobrescreve por ENV se tiver
     b.setdefault("name",  os.getenv("BRAND_NAME", "Studio RS TV"))
     b.setdefault("primary_color", os.getenv("PRIMARY_COLOR", "#0d1b2a"))
-    b.setdefault("logo_url", os.getenv("BRAND_LOGO_URL", ""))  # png transparente recomendado
+    b.setdefault("logo_url", os.getenv("BRAND_LOGO_URL", ""))  # png branco/transparent
     return b
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # App
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 app = Flask(__name__, static_folder=str(STATIC_DIR), template_folder=str(APP_ROOT / "templates"))
 
 @app.route("/")
@@ -93,9 +89,9 @@ def index():
         support_link=os.getenv("SUPPORT_WA", "https://wa.me/5512996273989")
     )
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Uploads
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 @app.route("/upload", methods=["POST"])
 def upload():
     if "file" not in request.files:
@@ -103,12 +99,10 @@ def upload():
     f = request.files["file"]
     if not f.filename:
         return jsonify({"ok": False, "error": "empty filename"}), 400
-
     ext = Path(f.filename).suffix.lower()
     if ext not in ALLOWED_EXT:
         return jsonify({"ok": False, "error": "ext not allowed"}), 400
 
-    # prefixo com data/hora para evitar colisão
     stamp = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     fname = f"{stamp}-{safe_filename(f.filename)}"
     dest  = UPLOAD_DIR / fname
@@ -131,12 +125,11 @@ def api_list_uploads():
         })
     return jsonify({"ok": True, "items": items})
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Clientes / Terminais
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 def read_clients():
     data = load_json(CLIENTS_FILE, {"clients": []})
-    # normaliza
     out = []
     for c in data.get("clients", []):
         code = str(c.get("code","")).strip()
@@ -156,14 +149,9 @@ def write_clients(clients_data):
 @app.route("/api/v1/clients")
 def api_clients():
     data = read_clients()
-    # devolve em um formato que o index espera
     items = []
     for c in data["clients"]:
-        items.append({
-            "code": c["code"],
-            "name": c["name"],
-            "terminals": c["terminals"]
-        })
+        items.append({"code": c["code"], "name": c["name"], "terminals": c["terminals"]})
     return jsonify({"ok": True, "items": items})
 
 @app.route("/api/v1/client", methods=["POST"])
@@ -179,10 +167,9 @@ def api_upsert_client():
     if terms < 1: terms = 1
 
     data = read_clients()
-    # calcula license_until
     until = (datetime.datetime.utcnow() + datetime.timedelta(days=license_days)).date().isoformat()
-
     terminals = list(range(1, terms + 1))
+
     found = False
     for c in data["clients"]:
         if c["code"] == code:
@@ -202,31 +189,27 @@ def api_upsert_client():
     write_clients(data)
     return jsonify({"ok": True, "client": code, "terminals": terminals})
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Playlists / Config do terminal
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+DEFAULT_SCHEDULE_HOURS = [6, 12, 18]
+
 def playlist_path(client_code: str, term: int) -> Path:
     return PLAY_DIR / f"{client_code}-{str(term).zfill(2)}.json"
-
-DEFAULT_SCHEDULE_HOURS = [6, 12, 18]
 
 def read_config_for(code: str):
     client, term = parse_code(code)
     if not client or not term:
         return None
-
     p = playlist_path(client, term)
     if p.exists():
         cfg = load_json(p, {})
-        # compat older
         cfg.setdefault("refresh_minutes", 10)
         cfg.setdefault("update_schedule_hours", DEFAULT_SCHEDULE_HOURS)
         cfg.setdefault("code", f"{client}-{str(term).zfill(2)}")
         cfg.setdefault("updated_at", utcnow_iso())
         cfg.setdefault("ok", True)
         return cfg
-
-    # sem playlist salva ainda — devolve básico
     return {
         "code": f"{client}-{str(term).zfill(2)}",
         "ok": True,
@@ -257,13 +240,12 @@ def api_save_playlist():
     if not client or not term:
         return jsonify({"ok": False, "error": "invalid code"}), 400
 
-    # normaliza itens
     norm = []
     for it in items:
         t = (it.get("type") or "").lower()
         url = (it.get("url") or "").strip()
         dur = int(it.get("duration") or 0)
-        if t == "image" and (dur <= 0):
+        if t == "image" and dur <= 0:
             dur = 10
         if t == "video":
             dur = 0
@@ -310,54 +292,112 @@ def api_save_settings():
     save_json(p, cfg)
     return jsonify({"ok": True})
 
-# -----------------------------------------------------------------------------
-# Comandos / Pareamento (stubs simples)
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Status / Summary (para os blocos do painel) e Heartbeat do player
+# ---------------------------------------------------------------------------
+def read_status():
+    return load_json(STATUS_FILE, {})
+
+def write_status(s):
+    save_json(STATUS_FILE, s)
+
+@app.route("/api/v1/heartbeat", methods=["POST"])
+def api_heartbeat():
+    """
+    Enviado pelo player periodicamente:
+    { "code":"001-01", "playing":"url", "volume":70 }
+    """
+    j = request.get_json(silent=True) or {}
+    code = (j.get("code") or "").strip()
+    if not code:
+        return jsonify({"ok": False, "error": "missing code"}), 400
+
+    s = read_status()
+    s[code] = {
+        "last_seen": utcnow_iso(),
+        "online": True,
+        "playing": j.get("playing"),
+        "extra": {k:v for k,v in j.items() if k not in {"code","playing"}}
+    }
+    write_status(s)
+    return jsonify({"ok": True})
+
+@app.route("/api/v1/summary")
+def api_summary():
+    """
+    Retorna blocos: clientes -> terminais com contagem de itens, atualizado, status etc.
+    """
+    clients = read_clients()["clients"]
+    status  = read_status()
+    blocks = []
+    for c in clients:
+        for term in c["terminals"]:
+            code = f"{c['code']}-{str(term).zfill(2)}"
+            cfg = load_json(playlist_path(c["code"], term), {})
+            items = cfg.get("playlist", [])
+            st = status.get(code, {})
+            # offline se não visto há > 3 minutos
+            online = False
+            last_seen = st.get("last_seen")
+            if last_seen:
+                try:
+                    dt = datetime.datetime.fromisoformat(last_seen.replace("Z","+00:00"))
+                    online = (datetime.datetime.utcnow() - dt.replace(tzinfo=None)).total_seconds() < 180
+                except Exception:
+                    online = False
+            blocks.append({
+                "client_name": c["name"],
+                "client_code": c["code"],
+                "term": term,
+                "display_code": code,
+                "items": len(items),
+                "updated_at": cfg.get("updated_at"),
+                "config_version": cfg.get("config_version", 0),
+                "online": online,
+                "last_seen": last_seen,
+                "playing": st.get("playing")
+            })
+    # agrupa por cliente no front; aqui só mandamos a lista
+    return jsonify({"ok": True, "items": blocks})
+
+@app.route("/api/v1/terminal")
+def api_terminal_detail():
+    """
+    Retorna detalhe do terminal + playlist + uploads (para carregar a tela de edição direto).
+    ?code=001-01
+    """
+    code = request.args.get("code","").strip()
+    cfg = read_config_for(code)
+    if not cfg:
+        return jsonify({"ok": False, "error": "invalid code"}), 400
+    # uploads
+    ups = []
+    for p in sorted(UPLOAD_DIR.glob("*")):
+        if not p.is_file(): 
+            continue
+        ups.append({"filename": p.name, "url": f"/static/uploads/{p.name}", "type": guess_type(p)})
+    return jsonify({"ok": True, "config": cfg, "uploads": ups})
+
+# ---------------------------------------------------------------------------
+# Comandos (stub)
+# ---------------------------------------------------------------------------
 @app.route("/api/v1/terminal/command", methods=["POST"])
 def api_command():
-    # Aqui poderíamos enfileirar comando para o player (ex.: restart).
-    # Por enquanto, só retornamos ok.
+    # enfileirar comandos específicos depois; por ora, só OK
     return jsonify({"ok": True})
 
-@app.route("/api/v1/pair/request", methods=["POST"])
-def api_pair_request():
-    # Gera um código que o aparelho exibiria
-    code = "".join(random.choices(string.digits, k=8))
-    pairs = load_json(PAIRS_FILE, {})
-    pairs[code] = {"created_at": utcnow_iso()}
-    save_json(PAIRS_FILE, pairs)
-    return jsonify({"ok": True, "pair_code": code})
-
-@app.route("/api/v1/pair/attach", methods=["POST"])
-def api_pair_attach():
-    j = request.get_json(silent=True) or {}
-    pair_code  = (j.get("pair_code") or "").strip()
-    client     = (j.get("client_code") or "").strip()
-    try:
-        term = int(j.get("term"))
-    except Exception:
-        return jsonify({"ok": False, "error": "invalid term"}), 400
-
-    pairs = load_json(PAIRS_FILE, {})
-    if pair_code not in pairs:
-        return jsonify({"ok": False, "error": "pair not found"}), 404
-    pairs[pair_code] = {"client_code": client, "term": term, "attached_at": utcnow_iso()}
-    save_json(PAIRS_FILE, pairs)
-    return jsonify({"ok": True})
-
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Saúde
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 @app.route("/api/v1/ping")
 def api_ping():
     return jsonify({"ok": True, "ts": utcnow_iso()})
 
-# Favicon opcional
 @app.route("/favicon.ico")
 def favicon():
     return "", 204
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
     app.run(host="0.0.0.0", port=port)
