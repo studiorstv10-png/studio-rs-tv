@@ -1,337 +1,465 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>{{ branding.name or 'Studio RS TV' }} — Painel</title>
-<style>
-:root{
-  --bg:#0b1220;--fg:#e8eefc;--muted:#94a3b8;--card:#111827;
-  --ok:#22c55e;--bad:#ef4444;--warn:#f59e0b;
-  --brand:{{ branding.primary_color or '#0d1b2a' }};
-}
-*{box-sizing:border-box}
-body{margin:0;padding:24px;background:var(--bg);color:var(--fg);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
-h1{margin:0;font-size:22px}
-a{color:#93c5fd;text-decoration:none}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.brand{display:flex;gap:10px;align-items:center}
-.brand img{height:26px}
-.card{background:var(--card);border:1px solid #273244;border-radius:10px;padding:14px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.grid{display:grid;gap:10px}
-label{font-size:12px;color:var(--muted)}
-input,select{width:100%;padding:8px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--fg)}
-.btn{background:#2563eb;border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
-.btn.alt{background:#374151}.btn.warn{background:var(--warn)}.btn.ok{background:#16a34a}
-.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt24{margin-top:24px}
-.flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.upload-list{max-height:260px;overflow:auto;border:1px dashed #334155;border-radius:8px;padding:6px}
-.pill{font-size:12px;padding:2px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155;color:#cbd5e1}
-.badge{background:var(--brand);color:#fff;padding:2px 8px;border-radius:999px;font-size:12px}
-.status{font-size:12px;color:#cbd5e1}
-.okdot,.baddot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
-.okdot{background:var(--ok)}.baddot{background:var(--bad)}
-details{border:1px solid #273244;border-radius:10px;padding:10px;background:#0f172a}
-details+details{margin-top:10px}
-details>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
-details>summary::-webkit-details-marker{display:none}
-.term-row{display:flex;justify-content:space-between;align-items:center;border:1px solid #283249;border-radius:8px;padding:8px;background:#0c1528}
-.shadow{box-shadow:0 0 0 1px #1f2937 inset;border-radius:8px;padding:8px}
-.chip{background:#0f172a;border:1px solid #334155;border-radius:999px;padding:2px 10px;font-size:12px}
-.chip.ok{border-color:var(--ok);color:#a7f3d0}
-.chip.pend{border-color:var(--warn);color:#fde68a}
-.chip.unk{border-color:#475569;color:#cbd5e1}
-#editingChip{display:none}
-.toast{position:fixed;right:16px;bottom:16px;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 14px}
-footer{margin-top:20px;color:#9aa2b2;font-size:12px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ (branding.name if branding else 'Studio RS TV') }} — Painel</title>
+  <style>
+    :root{
+      --bg:#0e1621; --card:#121c29; --muted:#7d8da8; --text:#e9eef9;
+      --brand: {{ (branding.primary_color if branding and branding.primary_color) or '#0d1b2a' }};
+      --ok:#1fbe7c; --warn:#ffb020; --danger:#ff5d5d; --line:#1b2838;
+    }
+    *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial}
+    a{color:#9cc4ff;text-decoration:none}
+    header{display:flex;gap:14px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(13,27,42,.35),transparent)}
+    header img{height:28px}
+    header .brand{font-weight:700}
+    header .spacer{flex:1}
+    header .pill{padding:6px 10px;border-radius:10px;background:var(--card);color:var(--muted);border:1px solid var(--line)}
+    main{padding:18px;display:grid;gap:16px;grid-template-columns:1.2fr .8fr}
+    section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+    h2{font-size:16px;margin:0 0 10px}
+    .row{display:flex;gap:8px;align-items:center}
+    .grid2{display:grid;gap:10px;grid-template-columns:repeat(2,1fr)}
+    .grid3{display:grid;gap:10px;grid-template-columns:repeat(3,1fr)}
+    input,select,button,textarea{padding:10px;border-radius:8px;border:1px solid var(--line);background:#0a121c;color:var(--text)}
+    input::placeholder, textarea::placeholder{color:#6c7a92}
+    button{cursor:pointer;background:var(--brand);border:1px solid rgba(255,255,255,.06)}
+    button.ghost{background:transparent}
+    button.secondary{background:#17314e}
+    button.warn{background:var(--warn)}
+    button.danger{background:var(--danger)}
+    small,h6{color:var(--muted);margin:0}
+    ul.list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto}
+    .item{display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid var(--line);background:#0a121c;padding:8px;border-radius:8px}
+    .muted{color:var(--muted)}
+    .tag{background:#0a1624;border:1px solid var(--line);padding:2px 8px;border-radius:999px;font-size:12px;color:#a9b7cc}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .cards{display:grid;gap:10px;grid-template-columns:repeat(3,1fr)}
+    .cardBox{border:1px solid var(--line);background:#0a121c;border-radius:10px;padding:10px}
+    .badge-ok{color:#1fbe7c}.badge-off{color:#ff7a7a}
+    hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+    .monospace{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .right{justify-content:flex-end}
+    .w100{width:100%}
+    .gap{gap:10px}
+    .hidden{display:none}
+    @media (max-width:1100px){main{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
 
 <header>
-  <div class="brand">
-    {% if branding.logo_url %}<img src="{{ branding.logo_url }}" alt="logo">{% endif %}
-    <h1>{{ branding.name or 'Studio RS TV' }} — Painel</h1>
-  </div>
-  <div class="flex">
-    <button class="btn alt" id="btnToggleAll" onclick="toggleAll()">Expandir todos</button>
-    <button class="btn alt" onclick="loadSummary(true)">Atualizar</button>
-    <label class="flex" style="gap:6px"><input type="checkbox" id="autoRefresh" onchange="toggleAuto()"/> Auto-refresh</label>
-    <a class="btn alt" href="{{ support_link }}" target="_blank">Suporte WhatsApp</a>
-  </div>
+  {% if branding and branding.logo %}
+    <img src="{{ branding.logo }}" alt="logo" />
+  {% endif %}
+  <div class="brand">{{ (branding.name if branding else 'Studio RS TV') }}</div>
+  <span class="spacer"></span>
+  <a class="pill" href="{{ support_link if support_link else 'https://wa.me/5512996273989' }}" target="_blank">Suporte WhatsApp</a>
 </header>
 
-<!-- CLIENTES (sempre no topo) -->
-<div class="card" id="clientsSection">
-  <strong>Clientes</strong>
-  <div id="clientsBox" class="mt12"></div>
-</div>
+<main>
 
-<div class="row mt16">
-  <!-- CLIENTE / TERMINAIS -->
-  <div class="card">
-    <strong>Cliente & Terminais</strong>
-    <div class="grid mt8">
-      <div><label>Nome do cliente</label><input id="c_name" placeholder="ex.: João"></div>
-      <div><label>Código do cliente</label><input id="c_code" placeholder="ex.: 001"></div>
-      <div><label>Qtd terminais</label><input id="c_terms" type="number" min="1" value="1"></div>
-      <div><label>Licença (dias)</label><input id="c_days" type="number" min="1" value="30"></div>
-    </div>
-    <button class="btn mt12" onclick="createClient()">Criar/Atualizar</button>
+  <!-- COLUNA ESQUERDA -->
+  <div class="col">
 
-    <div class="mt16">
-      <label>Selecionar terminal (topo)</label>
-      <select id="top_terminal"></select>
-      <div class="flex mt8">
-        <button class="btn alt" onclick="loadPlaylistFromTop()">Carregar Playlist</button>
-        <span id="editingChip" class="chip">Editando: —</span>
+    <!-- CLIENTE & TERMINAIS -->
+    <section class="card">
+      <h2>Cliente & Terminais</h2>
+      <div class="grid3">
+        <input id="c_name" placeholder="Nome do cliente (ex.: João)" />
+        <input id="c_code" placeholder="Código (ex.: 001)" />
+        <input id="c_qty" type="number" min="1" value="1" placeholder="Qtd. terminais" />
       </div>
-    </div>
-  </div>
-
-  <!-- UPLOADS -->
-  <div class="card">
-    <strong>Uploads</strong>
-    <div class="flex mt8">
-      <input id="file" type="file" multiple />
-      <button class="btn" onclick="sendFiles()">Enviar</button>
-    </div>
-    <div id="uploads" class="upload-list mt12"></div>
-  </div>
-</div>
-
-<!-- PLAYLIST -->
-<div class="card mt16">
-  <div class="flex" style="justify-content:space-between">
-    <strong>Playlist por Terminal</strong>
-    <span id="editingChip2" class="chip" style="display:none"></span>
-  </div>
-
-  <div class="grid mt8">
-    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
-      <div>
-        <label>Terminal (playlist)</label>
-        <select id="pl_terminal"></select>
+      <div class="row gap" style="margin-top:8px">
+        <input id="c_days" type="number" min="1" value="30" placeholder="Licença (dias)" />
+        <button id="c_create">Criar/Atualizar</button>
+        <button class="ghost" id="expandAll">Expandir todos</button>
       </div>
-      <div>
-        <label>Nome da campanha (opcional)</label>
-        <input id="pl_name" placeholder="ex.: Promo Agosto"/>
+      <hr>
+      <div class="row gap">
+        <select id="top_terminal" class="w100"></select>
+        <button class="secondary" id="btnLoadTop">Carregar Playlist</button>
       </div>
-    </div>
-    <div class="flex">
-      <button class="btn alt" onclick="syncTop()">Sincronizar com topo</button>
-      <button class="btn" onclick="loadPlaylist()">Carregar Playlist</button>
-      <button class="btn warn" onclick="clearBuilder()">Limpar builder</button>
-    </div>
+    </section>
+
+    <!-- UPLOADS -->
+    <section class="card">
+      <h2>Uploads</h2>
+      <div class="row gap">
+        <input type="file" id="u_files" multiple />
+        <button id="u_send">Enviar</button>
+      </div>
+      <small>Formatos aceitos: mp4, mov, mkv, webm, jpg, jpeg, png, gif, webp</small>
+      <ul id="u_list" class="list" style="margin-top:8px"></ul>
+    </section>
+
+    <!-- PLAYLIST -->
+    <section class="card">
+      <h2>Playlist por Terminal</h2>
+      <div class="row gap" style="align-items:center">
+        <select id="pl_terminal" class="w100"></select>
+        <label class="row" style="gap:6px;margin-left:6px">
+          <input type="checkbox" id="autoLoadPl" checked />
+          Auto-carregar ao trocar
+        </label>
+        <input id="pl_campaign" class="w100" placeholder="Nome da campanha (opcional)" />
+      </div>
+
+      <div class="toolbar" style="margin-top:8px">
+        <button class="secondary" id="btnSyncTop">Sincronizar com topo</button>
+        <button id="btnLoad">Carregar Playlist</button>
+        <button class="warn" id="btnClear">Limpar builder</button>
+      </div>
+
+      <hr>
+
+      <div class="grid3">
+        <select id="pl_type">
+          <option value="video">Vídeo</option>
+          <option value="image">Imagem</option>
+          <option value="rss">RSS</option>
+        </select>
+
+        <select id="picker_select"></select>
+
+        <input id="pl_url" placeholder="URL ou /static/uploads/arquivo.ext" />
+      </div>
+
+      <div class="row gap" style="margin-top:8px">
+        <input id="pl_dur" type="number" min="0" value="10" placeholder="Duração para imagem/RSS (s)" />
+        <button id="btnAdd">Adicionar</button>
+        <button id="btnSave">Salvar Playlist</button>
+      </div>
+
+      <ul id="pl_list" class="list" style="margin-top:10px"></ul>
+      <small id="editing" class="muted"></small>
+    </section>
+
+    <!-- DIAGNÓSTICO -->
+    <section class="card">
+      <h2>Diagnóstico</h2>
+      <div class="toolbar">
+        <button class="secondary" id="btnPing">/api/v1/ping</button>
+        <div class="row gap">
+          <input id="cfg_code" placeholder="code (ex.: 001)" style="width:160px" />
+          <button class="secondary" id="btnCfg">/api/v1/config</button>
+        </div>
+      </div>
+      <pre id="diag" class="monospace" style="margin-top:10px;white-space:pre-wrap"></pre>
+    </section>
+
   </div>
 
-  <div class="grid mt16">
-    <div class="flex" style="gap:12px;flex-wrap:wrap">
-      <select id="item_type">
-        <option value="video">Vídeo</option><option value="image">Imagem</option><option value="rss">RSS</option>
-      </select>
-      <select id="item_pick"></select>
-      <input id="item_url" placeholder="URL ou /static/uploads/arquivo.ext" style="min-width:280px">
-      <input id="item_dur" type="number" min="1" placeholder="Duração (s) p/ imagem/RSS" style="width:180px">
-      <button class="btn" onclick="addItem()">Adicionar</button>
-      <button class="btn ok" onclick="savePlaylist()">Salvar Playlist</button>
-    </div>
+  <!-- COLUNA DIREITA -->
+  <div class="col">
+    <section class="card">
+      <h2>Clientes</h2>
+      <div id="cards" class="cards"></div>
+    </section>
   </div>
 
-  <div id="playlist" class="grid mt12"></div>
-</div>
-
-<footer>Desenvolvido por: Studio RS Ilhabela — suporte pelo botão no topo.</footer>
-
-<div id="toast" class="toast" style="display:none"></div>
+</main>
 
 <script>
-const qs=s=>document.querySelector(s);
-const api=(u,opt={})=>fetch(u,Object.assign({headers:{'Content-Type':'application/json'}},opt));
-let STATE={uploads:[],playlist:[],currentCode:"",autoTimer:null};
-let SUMMARY={};
-let expanded=false;
+  // ========= helpers =========
+  const qs  = (s, el=document) => el.querySelector(s);
+  const qsa = (s, el=document) => [...el.querySelectorAll(s)];
+  const api = (path, opt={}) => fetch(path, Object.assign({
+      headers: {'Content-Type':'application/json'}
+  }, opt));
 
-// -------- util --------
-function toast(msg,ms=2500){const t=qs('#toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',ms);}
-function setPushed(code,ver){try{localStorage.setItem('pushed:'+code,String(ver||''));}catch{}}
-function getPushed(code){try{return localStorage.getItem('pushed:'+code)||"";}catch{return "";}}
+  const STATE = {
+    currentCode: null,
+    uploads: [],
+    playlist: []
+  };
 
-// -------- clientes --------
-async function loadSummary(scrollTop=false){
-  const r=await api('/api/v1/summary'); const j=await r.json();
-  const box=qs('#clientsBox'); box.innerHTML='';
-  if(!j.ok){box.textContent='—';return;}
-  SUMMARY={};
-  j.items.forEach(x=>{(SUMMARY[x.client_code]??=[]).push(x);});
-  Object.keys(SUMMARY).sort().forEach(code=>{
-    const list=SUMMARY[code].sort((a,b)=>a.term-b.term);
-    const name=list[0].client_name, online=list.filter(t=>t.online).length;
-    const d=document.createElement('details'); d.open=false;
-    d.innerHTML=`
-      <summary>
-        <div class="flex">
-          <span class="badge">${name}</span>
-          <span class="status">cliente ${code} • ${list.length} terminais • ${online}/${list.length} online</span>
+  const fmtName = (u) => {
+    try{
+      const p = new URL(u, location.origin);
+      return decodeURIComponent(p.pathname.split('/').pop());
+    }catch(e){
+      return u.split('/').pop();
+    }
+  };
+
+  // ========= UI render =========
+
+  function renderUploads(){
+    const ul = qs('#u_list'); ul.innerHTML = '';
+    STATE.uploads.forEach(v=>{
+      const li = document.createElement('li');
+      li.className = 'item';
+      li.innerHTML = `
+        <div class="row" style="gap:8px">
+          <span class="tag">${v.type||'file'}</span>
+          <div class="muted">${fmtName(v.url||v)}</div>
         </div>
-        <div class="flex">
-          <button class="btn alt" onclick="manage('${list[0].client_code}-${String(list[0].term).padStart(2,'0')}');event.preventDefault();">Gerenciar 1º</button>
-        </div>
-      </summary>
-      <div class="grid mt8">
-        ${list.map(t=>{
-          const disp=t.display_code, pushed=getPushed(disp), cfg=String(t.config_version||"");
-          let syncClass='unk', syncTxt='Desconhecido';
-          if(pushed){ if(pushed===cfg){syncClass='ok'; syncTxt='OK';} else {syncClass='pend'; syncTxt='Pendente';}}
-          return `
-          <div class="term-row">
-            <div>
-              <div class="flex"><strong>${disp}</strong><span class="chip ${syncClass}">${syncTxt}</span></div>
-              <div class="status">${t.online?'<span class="okdot"></span>online':'<span class="baddot"></span>offline'} • itens: ${t.items} • versão: ${cfg||'-'} • ${t.updated_at||''}</div>
-            </div>
-            <div class="flex">
-              <button class="btn" onclick="manage('${disp}')">Editar</button>
-              <button class="btn alt" onclick="window.open('/api/v1/config?code=${encodeURIComponent(disp)}','_blank')">Ver config</button>
-              <button class="btn warn" onclick="restart('${disp}')">Reiniciar</button>
-              <button class="btn ok" onclick="pushTo('${disp}')">Sincronizar com builder</button>
-            </div>
-          </div>`;}).join('')}
-      </div>`;
-    box.appendChild(d);
-  });
-  if(scrollTop) document.getElementById('clientsSection').scrollIntoView({behavior:'smooth'});
-}
-function toggleAll(){
-  expanded=!expanded;
-  document.querySelectorAll('#clientsBox details').forEach(d=>d.open=expanded);
-  qs('#btnToggleAll').innerText=expanded?'Recolher todos':'Expandir todos';
-}
-function toggleAuto(){
-  const on=qs('#autoRefresh').checked;
-  if(on){ STATE.autoTimer=setInterval(()=>loadSummary(false),10000); } else { clearInterval(STATE.autoTimer); }
-}
-
-// -------- cliente/terminais --------
-async function createClient(){
-  const name=qs('#c_name').value.trim();
-  const code=qs('#c_code').value.trim();
-  const terms=parseInt(qs('#c_terms').value||'1',10);
-  const days=parseInt(qs('#c_days').value||'30',10);
-  const r=await api('/api/v1/client',{method:'POST',body:JSON.stringify({name,client_code:code,terminals:terms,license_days:days})});
-  const j=await r.json();
-  if(!j.ok){alert('Erro: '+(j.error||'falha'));return;}
-  await refreshSelects(); await loadSummary(true);
-  toast(`Cliente salvo: ${code} (${terms} terminais)`);
-}
-async function refreshSelects(){
-  const r=await api('/api/v1/clients'); const j=await r.json();
-  const top=qs('#top_terminal'), pl=qs('#pl_terminal'); top.innerHTML=''; pl.innerHTML='';
-  if(!j.ok) return;
-  j.items.forEach(c=>c.terminals.forEach(t=>{
-    const code=`${c.code}-${String(t).padStart(2,'0')}`; const label=`${c.name} — ${code}`;
-    top.add(new Option(label,code)); pl.add(new Option(label,code));
-  }));
-}
-function syncTop(){ qs('#pl_terminal').value=qs('#top_terminal').value; showEditing(qs('#pl_terminal').value); }
-function showEditing(code){ if(!code){qs('#editingChip').style.display='none';qs('#editingChip2').style.display='none';return;}
-  qs('#editingChip').style.display='inline-block'; qs('#editingChip').textContent='Editando: '+code;
-  qs('#editingChip2').style.display='inline-block'; qs('#editingChip2').textContent='Editando: '+code;
-}
-
-// -------- uploads --------
-async function listUploads(){ const r=await api('/api/v1/uploads'); const j=await r.json(); STATE.uploads=j.ok?j.items:[]; renderUploads(); fillPicker(); }
-function renderUploads(){
-  const box=qs('#uploads'); box.innerHTML='';
-  STATE.uploads.forEach(u=>{
-    const row=document.createElement('div'); row.className='flex'; row.style.justifyContent='space-between';
-    row.innerHTML=`<div>${u.type.toUpperCase()} — <a href="${u.url}" target="_blank">${u.url}</a></div>
-                   <div class="flex"><button class="btn alt" onclick="useUpload('${u.url}','${u.type}')">usar</button></div>`;
-    box.appendChild(row);
-  });
-}
-function fillPicker(){ const sel=qs('#item_pick'); sel.innerHTML=''; STATE.uploads.forEach(u=>sel.add(new Option(u.url,u.url))); }
-function useUpload(url,type){ qs('#item_url').value=url; qs('#item_type').value=type||'video'; }
-async function sendFiles(){
-  const inp=qs('#file'); if(!inp.files.length) return;
-  for(const f of inp.files){
-    const form=new FormData(); form.append('file',f);
-    const r=await fetch('/upload',{method:'POST',body:form}); const j=await r.json();
-    if(j.ok){ STATE.uploads.unshift({filename:j.filename,url:j.url,type:j.type}); toast('Enviado: '+j.filename,1500); }
+        <div class="row" style="gap:6px">
+          <a class="ghost" href="${v.url||v}" target="_blank"><button class="ghost">abrir</button></a>
+          <button class="secondary" onclick="useUpload('${v.url||v}')">usar</button>
+        </div>`;
+      ul.appendChild(li);
+    });
   }
-  inp.value=""; renderUploads(); fillPicker();
-}
 
-// -------- playlist/builder --------
-async function manage(code){
-  const r=await api('/api/v1/terminal?code='+encodeURIComponent(code)); const j=await r.json();
-  if(!j.ok){alert('Erro ao carregar');return;}
-  await refreshSelects();
-  qs('#top_terminal').value=code; qs('#pl_terminal').value=code; showEditing(code);
-  STATE.uploads=j.uploads||[]; renderUploads(); fillPicker();
-  STATE.currentCode=code; STATE.playlist=(j.config&&j.config.playlist)||[]; qs('#pl_name').value=(j.config&&j.config.campaign)||''; renderPlaylist();
-  window.scrollTo({top:document.body.scrollHeight*0.30,behavior:'smooth'});
-}
-async function loadPlaylistFromTop(){ qs('#pl_terminal').value=qs('#top_terminal').value; await loadPlaylist(); }
-async function loadPlaylist(){
-  const code=qs('#pl_terminal').value;
-  const r=await api('/api/v1/config?code='+encodeURIComponent(code)); const j=await r.json();
-  if(!j.ok){alert('Erro ao carregar');return;}
-  STATE.currentCode=code; STATE.playlist=j.playlist||[]; qs('#pl_name').value=j.campaign||''; renderPlaylist(); showEditing(code);
-}
-function renderPlaylist(){
-  const box=qs('#playlist'); box.innerHTML='';
-  STATE.playlist.forEach((it,i)=>{
-    const row=document.createElement('div'); row.className='flex';
-    row.innerHTML=`
-      <span class="pill">${it.type}</span>
-      <input style="flex:1" value="${it.url}" oninput="STATE.playlist[${i}].url=this.value">
-      <input type="number" placeholder="duração img/RSS" value="${it.duration||0}" oninput="STATE.playlist[${i}].duration=parseInt(this.value||0,10)">
-      <button class="btn alt" onclick="move(${i},-1)">↑</button>
-      <button class="btn alt" onclick="move(${i},1)">↓</button>
-      <button class="btn warn" onclick="removeItem(${i})">remover</button>`;
-    box.appendChild(row);
+  function fillPicker(){
+    const sel = qs('#picker_select'); sel.innerHTML = '';
+    const optEmpty = document.createElement('option');
+    optEmpty.value = ''; optEmpty.textContent = '— escolher dos uploads…';
+    sel.appendChild(optEmpty);
+
+    STATE.uploads.forEach(v=>{
+      const o = document.createElement('option');
+      o.value = v.url||v; o.textContent = fmtName(v.url||v);
+      sel.appendChild(o);
+    });
+    sel.onchange = ()=>{
+      const v = sel.value;
+      if (v) qs('#pl_url').value = v;
+    };
+  }
+
+  function showEditing(code){
+    qs('#editing').textContent = code ? `Editando: ${code}` : '';
+  }
+
+  function clearBuilder(){
+    STATE.playlist = [];
+    renderPlaylist();
+  }
+
+  function renderPlaylist(){
+    const ul = qs('#pl_list'); ul.innerHTML = '';
+    STATE.playlist.forEach((it, idx)=>{
+      const li = document.createElement('li');
+      li.className = 'item';
+      li.innerHTML = `
+        <div class="row" style="gap:8px">
+          <span class="tag">${it.type}</span>
+          <div class="muted">${fmtName(it.url||'')}</div>
+        </div>
+        <div class="row" style="gap:6px">
+          <input type="number" min="0" value="${it.duration||0}" style="width:80px" 
+                 onchange="STATE.playlist[${idx}].duration = this.valueAsNumber||0" title="duração (s) para imagens/RSS" />
+          <button class="ghost" title="subir" onclick="moveItem(${idx},-1)">↑</button>
+          <button class="ghost" title="descer" onclick="moveItem(${idx},+1)">↓</button>
+          <button class="danger" onclick="removeItem(${idx})">remover</button>
+        </div>`;
+      ul.appendChild(li);
+    });
+  }
+
+  function moveItem(i, dir){
+    const j = i + dir;
+    if (j<0 || j>=STATE.playlist.length) return;
+    const a = STATE.playlist[i]; STATE.playlist[i]=STATE.playlist[j]; STATE.playlist[j]=a;
+    renderPlaylist();
+  }
+  function removeItem(i){
+    STATE.playlist.splice(i,1); renderPlaylist();
+  }
+
+  function renderCards(list){
+    const wrap = qs('#cards'); wrap.innerHTML = '';
+    list.forEach(t=>{
+      const div = document.createElement('div');
+      div.className = 'cardBox';
+      div.innerHTML = `
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <b>${t.display||t.code}</b>
+            <div class="muted">${t.group||'-'}</div>
+          </div>
+          <div class="row" style="gap:6px">
+            <span class="${t.online?'badge-ok':'badge-off'}">${t.online?'online':'offline'}</span>
+            <button class="secondary" onclick="manage('${t.code}')">Gerenciar</button>
+          </div>
+        </div>`;
+      wrap.appendChild(div);
+    });
+  }
+
+  // ========= server fetchers =========
+
+  async function refreshSelects(){
+    // lista de terminais
+    const r = await api('/api/v1/terminal?list=1');
+    const j = await r.json();
+    const list = j.terminals || j.data || j || [];
+    const fill = (selId)=>{
+      const sel = qs(selId);
+      sel.innerHTML = '';
+      list.forEach(t=>{
+        const o = document.createElement('option');
+        o.value = t.code; o.textContent = `${t.display||t.name||t.code}`;
+        sel.appendChild(o);
+      });
+    };
+    fill('#top_terminal');
+    fill('#pl_terminal');
+    renderCards(list);
+    return list;
+  }
+
+  async function loadUploads(){
+    const r = await api('/api/v1/uploads');
+    const j = await r.json();
+    STATE.uploads = j.uploads || j.data || [];
+    renderUploads(); fillPicker();
+  }
+
+  async function loadPlaylistFor(code){
+    const r = await api('/api/v1/config?code=' + encodeURIComponent(code));
+    const j = await r.json();
+    STATE.currentCode = code;
+    STATE.playlist = (j.ok ? (j.playlist || []) : []);
+    qs('#pl_campaign').value = (j.ok ? (j.campaign||'') : '');
+    renderPlaylist();
+    showEditing(code);
+  }
+
+  async function manage(code){
+    // Detalhes do terminal
+    const r = await api('/api/v1/terminal?code=' + encodeURIComponent(code));
+    const j = await r.json();
+    await refreshSelects();
+    qs('#top_terminal').value = code;
+    qs('#pl_terminal').value  = code;
+
+    // uploads atuais
+    STATE.uploads = j.uploads || [];
+    renderUploads(); fillPicker();
+
+    // carrega playlist do código
+    await loadPlaylistFor(code);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ========= actions =========
+
+  // criar/atualizar cliente + terminais
+  qs('#c_create').onclick = async ()=>{
+    const payload = {
+      name:  qs('#c_name').value.trim(),
+      code:  qs('#c_code').value.trim(),
+      qty:   (qs('#c_qty').valueAsNumber||1),
+      days:  (qs('#c_days').valueAsNumber||30)
+    };
+    if (!payload.name || !payload.code) { alert('Informe nome e código.'); return; }
+    const r = await api('/api/v1/terminal', {method:'POST', body:JSON.stringify(payload)});
+    const j = await r.json();
+    if (!j.ok) return alert(j.error||'Erro ao criar');
+    await refreshSelects();
+    alert('Cliente/terminais criados.');
+  };
+
+  // enviar uploads
+  qs('#u_send').onclick = async ()=>{
+    const f = qs('#u_files').files;
+    if (!f || !f.length) return alert('Escolha arquivos.');
+    const fd = new FormData();
+    [...f].forEach(x=>fd.append('files', x));
+    const r = await fetch('/api/v1/upload', {method:'POST', body:fd});
+    const j = await r.json();
+    if (!j.ok) return alert(j.error||'Falha ao enviar');
+    await loadUploads();
+  };
+
+  window.useUpload = (url)=>{
+    qs('#pl_url').value = url;
+  };
+
+  // adicionar ao builder
+  qs('#btnAdd').onclick = ()=>{
+    const type = qs('#pl_type').value;
+    const url  = qs('#pl_url').value.trim();
+    const dur  = qs('#pl_dur').valueAsNumber||0;
+    if (!url) return alert('Informe URL/arquivo.');
+    const item = {type, url};
+    if (type!=='video') item.duration = dur;
+    STATE.playlist.push(item);
+    renderPlaylist();
+    qs('#pl_url').value = '';
+  };
+
+  // salvar playlist
+  qs('#btnSave').onclick = async ()=>{
+    const code = qs('#pl_terminal').value;
+    if (!code) return alert('Escolha um terminal.');
+    const payload = {
+      code,
+      campaign: qs('#pl_campaign').value.trim(),
+      items: STATE.playlist
+    };
+    const r = await api('/api/v1/playlist', {method:'POST', body:JSON.stringify(payload)});
+    const j = await r.json();
+    if (!j.ok) return alert(j.error||'Erro ao salvar');
+    alert('Playlist salva para ' + code);
+    await loadPlaylistFor(code);
+  };
+
+  // limpar builder
+  qs('#btnClear').onclick = ()=>{ clearBuilder(); };
+
+  // carregar playlist (botão)
+  qs('#btnLoad').onclick = async ()=>{ await loadPlaylistFor(qs('#pl_terminal').value); };
+
+  // sincr com topo
+  qs('#btnSyncTop').onclick = async ()=>{
+    const code = qs('#top_terminal').value;
+    qs('#pl_terminal').value = code;
+    await loadPlaylistFor(code);
+  };
+
+  // carregar com topo (botão acima)
+  qs('#btnLoadTop').onclick = async ()=>{
+    const code = qs('#top_terminal').value;
+    await loadPlaylistFor(code);
+  };
+
+  // >>> Auto-carregar quando trocar o terminal da playlist
+  qs('#pl_terminal').addEventListener('change', async ()=>{
+    const code = qs('#pl_terminal').value;
+    if (STATE.currentCode && STATE.currentCode !== code && STATE.playlist.length){
+      const ok = confirm('Trocar de terminal? O builder atual será substituído pela playlist do novo terminal.');
+      if (!ok){ qs('#pl_terminal').value = STATE.currentCode; return; }
+    }
+    if (qs('#autoLoadPl').checked){
+      await loadPlaylistFor(code);  // carrega a playlist do novo terminal
+    }else{
+      STATE.currentCode = code;
+      clearBuilder();               // só limpa para começar do zero
+      showEditing(code);
+    }
   });
-}
-function addItem(){
-  const type=qs('#item_type').value;
-  const url=(qs('#item_url').value||'').trim()||qs('#item_pick').value||'';
-  if(!url){alert('Informe a URL ou escolha dos uploads');return;}
-  let dur=parseInt(qs('#item_dur').value||'0',10); if(type==='image'&&dur<=0) dur=10; if(type==='video') dur=0;
-  STATE.playlist.push({type,url,duration:dur}); renderPlaylist();
-}
-function move(i,d){ const j=i+d; if(j<0||j>=STATE.playlist.length) return; [STATE.playlist[i],STATE.playlist[j]]=[STATE.playlist[j],STATE.playlist[i]]; renderPlaylist(); }
-function removeItem(i){ STATE.playlist.splice(i,1); renderPlaylist(); }
-function clearBuilder(){ STATE.playlist=[]; renderPlaylist(); toast('Builder limpo'); }
 
-async function savePlaylist(){
-  const code=qs('#pl_terminal').value;
-  const body={code,items:STATE.playlist,campaign:qs('#pl_name').value,refresh_minutes:10,update_schedule_hours:[6,12,18]};
-  const r=await api('/api/v1/playlist',{method:'POST',body:JSON.stringify(body)}); const j=await r.json();
-  if(!j.ok){alert('Erro ao salvar: '+(j.error||'falha'));return;}
-  setPushed(code,String(j.config_version||""));
-  toast(`Playlist salva (v${j.config_version||'-'})`);
-  await loadSummary(true);
-}
+  // diagnóstico
+  qs('#btnPing').onclick = async ()=>{
+    const r = await api('/api/v1/ping');
+    qs('#diag').textContent = JSON.stringify(await r.json(), null, 2);
+  };
+  qs('#btnCfg').onclick = async ()=>{
+    const code = qs('#cfg_code').value.trim();
+    const r = await api('/api/v1/config?code='+encodeURIComponent(code||'DEMO'));
+    qs('#diag').textContent = JSON.stringify(await r.json(), null, 2);
+  };
 
-// sincronizar builder direto para um cartão
-async function pushTo(code){
-  if(!STATE.playlist.length){alert('Builder vazio. Carregue ou monte a playlist primeiro.');return;}
-  const body={code,items:STATE.playlist,campaign:qs('#pl_name').value,refresh_minutes:10,update_schedule_hours:[6,12,18]};
-  const r=await api('/api/v1/playlist',{method:'POST',body:JSON.stringify(body)}); const j=await r.json();
-  if(j.ok){ setPushed(code,String(j.config_version||"")); toast(`Enviado p/ ${code} (v${j.config_version})`); await loadSummary(); }
-  else{ alert('Erro: '+(j.error||'falha')); }
-}
+  // expandir todos (cartões)
+  qs('#expandAll').onclick = async ()=>{
+    await refreshSelects();
+    alert('Lista atualizada.');
+  };
 
-// comandos
-async function restart(code){ await api('/api/v1/terminal/command',{method:'POST',body:JSON.stringify({code,cmd:'restart'})}); toast('Comando enviado'); }
-
-// boot
-(async function init(){
-  await refreshSelects();
-  await listUploads();
-  await loadSummary();
-})();
+  // ========= boot =========
+  (async function boot(){
+    await refreshSelects();
+    await loadUploads();
+    const plSel = qs('#pl_terminal');
+    if (plSel.value){ await loadPlaylistFor(plSel.value); }
+  })();
 </script>
 </body>
 </html>
