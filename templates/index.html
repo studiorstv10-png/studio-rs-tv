@@ -1,447 +1,348 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>{{ branding.name or 'Studio RS TV' }} — Painel</title>
-  <style>
-    :root{
-      --bg:#0f1522; --panel:#141b2c; --text:#e7eefc; --muted:#9bb0d1;
-      --accent: {{ branding.primary_color or '#0a2458' }};
-      --ok:#2ecc71; --warn:#f39c12; --danger:#e74c3c;
-      --card:#101725; --border:#22304b; --input:#0d1320;
-    }
-    .light{ --bg:#f5f7fb; --panel:#fff; --card:#fff; --text:#111827; --muted:#6b7280; --border:#e5e7eb; --input:#fff; }
-    *{box-sizing:border-box}
-    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text);}
-    header{ display:flex; align-items:center; gap:14px; padding:14px 18px; border-bottom:1px solid var(--border); background:linear-gradient(0deg,transparent,rgba(255,255,255,.02));}
-    .brand{ display:flex; align-items:center; gap:10px; font-weight:700;}
-    .brand .dot{ width:10px;height:10px;border-radius:50%; background:{{ branding.primary_color or '#0a2458' }}}
-    .brand img{ height:28px; object-fit:contain}
-    .right{ margin-left:auto; display:flex; align-items:center; gap:10px}
-    .btn{ background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:600; cursor:pointer;}
-    .btn.outline{ background:transparent; border:1px solid var(--accent); color:var(--text)}
-    .btn.ghost{ background:#0000; border:1px solid var(--border); color:var(--text)}
-    .btn.small{ padding:6px 10px; border-radius:7px; font-size:12px}
-    .wrap{ max-width:1180px; margin:18px auto; padding:0 14px;}
-    .grid{ display:grid; gap:14px}
-    @media(min-width:980px){ .grid.cols-2{ grid-template-columns:1fr 1fr } }
-    .card{ background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px;}
-    h2,h3{ margin:6px 0 12px 0}
-    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
-    input,select,textarea{ width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--input); color:var(--text)}
-    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-    .muted{ font-size:12px; color:var(--muted)}
-    .uploads-list{ max-height:280px; overflow:auto; border:1px dashed var(--border); border-radius:10px; padding:8px}
-    .upload-item{ display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; background:var(--card)}
-    .pill{ font-size:11px; padding:3px 8px; border:1px solid var(--border); border-radius:999px; color:var(--muted)}
-    .list{ display:flex; flex-direction:column; gap:8px}
-    .pl-item{ display:flex; align-items:center; gap:10px; border:1px solid var(--border); background:var(--card); border-radius:8px; padding:8px}
-    .drag{ cursor:move; opacity:.85}
-    .w-120{ width:120px}
-    .footer{ margin:28px 0; text-align:center; color:var(--muted); font-size:13px}
-    a{ color:var(--text)}
-    .divider{ height:1px; background:var(--border); margin:10px 0}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>{{ branding.name or 'Studio RS TV' }} — Painel</title>
+<style>
+  :root { --bg:#0b1220; --fg:#e8eefc; --muted:#94a3b8; --card:#111827; --ok:#22c55e; --bad:#ef4444; --brand: {{ branding.primary_color or '#0d1b2a' }};}
+  body{background:var(--bg);color:var(--fg);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; margin:0;padding:24px}
+  h1{margin:0 0 16px 0;font-size:22px}
+  a{color:#93c5fd;text-decoration:none}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--card);border-radius:10px;padding:14px}
+  .grid{display:grid;gap:10px}
+  .btn{background:#2563eb;border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
+  .btn.alt{background:#374151}
+  .btn.warn{background:#f59e0b}
+  .btn.ok{background:#16a34a}
+  input,select{width:100%;padding:8px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--fg)}
+  label{font-size:12px;color:var(--muted)}
+  .mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt24{margin-top:24px}
+  .flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .upload-list{max-height:260px;overflow:auto;border:1px dashed #334155;border-radius:8px;padding:6px}
+  .pill{font-size:12px;padding:2px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155;color:#cbd5e1}
+  .status{font-size:12px}
+  .okdot{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block;margin-right:6px}
+  .baddot{width:8px;height:8px;border-radius:50%;background:var(--bad);display:inline-block;margin-right:6px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .badge{background:var(--brand);color:#fff;padding:2px 8px;border-radius:999px;font-size:12px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand img{height:26px}
+  footer{margin-top:24px;color:#9aa2b2;font-size:12px}
+</style>
 </head>
 <body>
+
 <header>
   <div class="brand">
-    {% if branding.logo_url %}<img src="{{ branding.logo_url }}" alt="logo">{% endif %}
-    <span>{{ branding.name or 'Studio RS TV' }}</span>
-    <span class="dot" title="cor da marca"></span>
+    {% if branding.logo_url %}
+      <img src="{{ branding.logo_url }}" alt="logo">
+    {% endif %}
+    <h1>{{ branding.name or 'Studio RS TV' }} — Painel</h1>
   </div>
-  <div class="right">
-    <span id="themeLabel" class="muted">tema: escuro</span>
-    <button class="btn ghost small" onclick="toggleTheme()">Alternar tema</button>
-    <a class="btn outline small" href="{{ support_link }}" target="_blank">Suporte WhatsApp</a>
-  </div>
+  <a class="btn alt" href="{{ support_link }}" target="_blank">Suporte WhatsApp</a>
 </header>
 
-<div class="wrap grid cols-2">
+<!-- BLOCO: Clientes & Terminais -->
+<div class="card">
+  <div class="flex" style="justify-content:space-between">
+    <strong>Clientes & Terminais</strong>
+    <button class="btn alt" onclick="loadSummary()">Atualizar lista</button>
+  </div>
+  <div id="summary" class="cards mt12"></div>
+</div>
+
+<div class="row mt16">
   <!-- CLIENTE / TERMINAIS -->
-  <section class="card">
-    <h3>Cliente & Terminais</h3>
-    <div class="row" style="gap:12px">
-      <div style="flex:1 1 220px">
+  <div class="card">
+    <strong>Cliente & Terminais</strong>
+    <div class="grid mt8">
+      <div>
         <label>Nome do cliente</label>
-        <input id="cli_name" placeholder="ex.: Supermercado Frade">
+        <input id="c_name" placeholder="ex.: Frade" />
       </div>
-      <div style="width:110px">
+      <div>
         <label>Código do cliente</label>
-        <input id="cli_code" placeholder="001">
+        <input id="c_code" placeholder="ex.: 001" />
       </div>
-      <div style="width:120px">
+      <div>
         <label>Qtd terminais</label>
-        <input id="cli_terms" placeholder="1" value="1">
+        <input id="c_terms" type="number" min="1" value="1" />
       </div>
-      <div style="width:140px">
+      <div>
         <label>Licença (dias)</label>
-        <input id="cli_lic" placeholder="30" value="30">
+        <input id="c_days" type="number" min="1" value="30" />
       </div>
-      <button class="btn" onclick="criarAtualizarCliente()">Criar/Atualizar</button>
     </div>
+    <button class="btn mt12" onclick="createClient()">Criar/Atualizar</button>
 
-    <div class="divider"></div>
-
-    <div class="row">
-      <div style="flex:1 1 auto">
-        <label>Selecionar terminal (topo)</label>
-        <select id="sel_terminal"></select>
-      </div>
-      <button class="btn outline" onclick="carregarPlaylist()">Carregar Playlist</button>
+    <div class="mt16">
+      <label>Selecionar terminal (topo)</label>
+      <select id="top_terminal"></select>
+      <button class="btn alt mt8" onclick="loadPlaylistFromTop()">Carregar Playlist</button>
     </div>
-
-    <div class="muted" id="terminal_info"></div>
-  </section>
+  </div>
 
   <!-- UPLOADS -->
-  <section class="card">
-    <h3>Uploads</h3>
-    <div class="row">
-      <input id="file" type="file" multiple>
-      <button class="btn" onclick="enviarUploads()">Enviar</button>
-      <span class="muted">Formatos: mp4, mov, mkv, webm, png, jpg, jpeg, gif, webp</span>
+  <div class="card">
+    <strong>Uploads</strong>
+    <div class="flex mt8">
+      <input id="file" type="file" multiple />
+      <button class="btn" onclick="sendFiles()">Enviar</button>
     </div>
-    <div class="uploads-list" id="uploads"></div>
-  </section>
+    <div id="uploads" class="upload-list mt12"></div>
+  </div>
+</div>
 
-  <!-- PLAYLIST -->
-  <section class="card">
-    <h3>Playlist por Terminal</h3>
-
-    <!-- seletor de terminal DENTRO da playlist -->
-    <div class="row" style="margin-bottom:6px">
-      <div style="flex:1 1 auto">
-        <label>Terminal (playlist)</label>
-        <select id="sel_terminal_pl"></select>
-      </div>
-      <button class="btn ghost" onclick="sincronizarSelectores()">Sincronizar com topo</button>
+<!-- PLAYLIST -->
+<div class="card mt16">
+  <strong>Playlist por Terminal</strong>
+  <div class="grid mt8">
+    <div>
+      <label>Terminal (playlist)</label>
+      <select id="pl_terminal"></select>
     </div>
+    <div class="flex">
+      <button class="btn alt" onclick="syncTop()">Sincronizar com topo</button>
+      <button class="btn" onclick="loadPlaylist()">Carregar Playlist</button>
+    </div>
+  </div>
 
-    <div class="row">
-      <select id="add_type" class="w-120">
+  <div class="grid mt16">
+    <div class="flex" style="gap:12px">
+      <select id="item_type">
         <option value="video">Vídeo</option>
         <option value="image">Imagem</option>
         <option value="rss">RSS</option>
       </select>
-      <select id="add_from" class="w-120">
-        <option value="uploads">Escolher dos uploads…</option>
-        <option value="url">Usar URL</option>
-      </select>
-      <input id="add_url" placeholder="URL ou /static/uploads/arquivo.ext" style="flex:1 1 260px">
-      <input id="add_dur" placeholder="Duração (s) p/ imagem/RSS" class="w-120">
-      <button class="btn" onclick="adicionarItem()">Adicionar</button>
+      <select id="item_pick"></select>
+      <input id="item_url" placeholder="URL ou /static/uploads/arquivo.ext" />
+      <input id="item_dur" type="number" min="1" placeholder="Duração (s) para imagem/RSS" />
+      <button class="btn" onclick="addItem()">Adicionar</button>
+      <button class="btn ok" onclick="savePlaylist()">Salvar Playlist</button>
     </div>
+  </div>
 
-    <div class="list" id="playlist_list" style="margin-top:10px"></div>
-
-    <div class="divider"></div>
-
-    <div class="row">
-      <input id="refresh_minutes" class="w-120" value="10" placeholder="Refresh (min)">
-      <input id="update_hours" class="w-120" value="6,12,18" placeholder="Horas (6,12,18)">
-      <button class="btn outline" onclick="salvarSettings()">Salvar Agenda</button>
-      <button class="btn outline" onclick="cmdRestart()">Reiniciar Player</button>
-      <span class="muted">Atualização sem tela preta.</span>
-    </div>
-
-    <div class="row" style="margin-top:12px">
-      <button class="btn" onclick="salvarPlaylist()">Salvar Playlist</button>
-      <button class="btn ghost" onclick="limparPlaylist()">Limpar</button>
-    </div>
-  </section>
-
-  <!-- PAREAMENTO / DIAGNÓSTICO -->
-  <section class="card">
-    <h3>Pareamento & Diagnóstico</h3>
-    <div class="row">
-      <button class="btn outline" onclick="reqPair()">Gerar código de pareamento</button>
-      <input id="pair_code" placeholder="código exibido na TV">
-      <button class="btn" onclick="attachPair()">Vincular ao terminal</button>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="row">
-      <button class="btn ghost" onclick="ping()">/api/v1/ping</button>
-      <button class="btn ghost" onclick="verConfig()">Ver Config</button>
-    </div>
-    <pre id="diag" style="max-height:260px; overflow:auto; background:var(--card); padding:10px; border-radius:10px; border:1px solid var(--border)"></pre>
-  </section>
+  <div id="playlist" class="grid mt12"></div>
 </div>
 
-<div class="wrap footer">
-  Desenvolvido por <b>Studio RS Ilhabela</b> — <a href="https://wa.me/5512996273989" target="_blank">WhatsApp Suporte</a>
-</div>
+<footer>
+  Desenvolvido por: Studio RS Ilhabela — suporte via botão no topo.
+</footer>
 
 <script>
-  // ===== helpers & state =====
-  const $ = id => document.getElementById(id);
-  const state = { uploads:[], items:[], terminal:'', clients:[] };
+const qs = s => document.querySelector(s);
+const api = (u, opt={}) => fetch(u, Object.assign({headers:{'Content-Type':'application/json'}}, opt));
 
-  function onLoad(){
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    if(savedTheme==='light') document.body.classList.add('light');
-    $('themeLabel').innerText = 'tema: ' + (document.body.classList.contains('light')?'claro':'escuro');
+let STATE = { uploads: [], playlist: [], currentCode: "" };
 
-    carregarTerminais().then(()=>listarUploads());
-  }
-  document.addEventListener('DOMContentLoaded', onLoad);
-
-  function toggleTheme(){
-    document.body.classList.toggle('light');
-    $('themeLabel').innerText = 'tema: ' + (document.body.classList.contains('light')?'claro':'escuro');
-    localStorage.setItem('theme', document.body.classList.contains('light')?'light':'dark');
-  }
-
-  // ===== clientes / terminais =====
-  async function criarAtualizarCliente(){
-    const name = $('cli_name').value.trim();
-    const code = $('cli_code').value.trim();
-    const terms = parseInt($('cli_terms').value||'1',10);
-    const lic = parseInt($('cli_lic').value||'30',10);
-    if(!code){ alert('Informe o código do cliente.'); return; }
-    const r = await fetch('/api/v1/client',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ name, client_code:code, terminals:terms, license_days: lic })
-    });
-    const j = await r.json();
-    if(!j.ok){ alert('Erro ao salvar cliente'); return; }
-    alert('Cliente/terminais salvos!');
-    await carregarTerminais(code);
-  }
-
-  function rotuloTerminal(cliName, cliCode, termNum){
-    const t = String(termNum).padStart(2,'0');
-    const name = cliName || ('Cliente ' + cliCode);
-    return `${name} — ${cliCode}-${t}`;
-  }
-
-  async function carregarTerminais(preselectClient){
-    const selTop = $('sel_terminal');
-    const selPL  = $('sel_terminal_pl');
-    selTop.innerHTML=''; selPL.innerHTML='';
-
-    const r = await fetch('/api/v1/clients'); const j = await r.json();
-    if(!j.ok){ return; }
-    state.clients = j.items||[];
-
-    let firstVal='';
-    state.clients.forEach(cli=>{
-      (cli.terminals||[]).forEach(t=>{
-        const value = `${cli.code}-${String(t).padStart(2,'0')}`;
-        const label = rotuloTerminal(cli.name, cli.code, t);
-
-        const o1 = document.createElement('option'); o1.value=value; o1.textContent=label;
-        const o2 = document.createElement('option'); o2.value=value; o2.textContent=label;
-
-        selTop.appendChild(o1); selPL.appendChild(o2);
-        if(!firstVal) firstVal=value;
-      });
-    });
-
-    // seleção padrão
-    const applySelect = (code)=>{
-      for(const o of selTop.options){ if(o.value.startsWith(code+'-')){ selTop.value=o.value; break; } }
-      for(const o of selPL.options){ if(o.value.startsWith(code+'-')){ selPL.value=o.value; break; } }
-    };
-
-    if(preselectClient){ applySelect(preselectClient); }
-    else { selTop.value=firstVal; selPL.value=firstVal; }
-
-    state.terminal = selTop.value || selPL.value || '';
-    atualizarInfoTerminal();
-
-    // sincronizar mudanças
-    selTop.onchange = ()=>{ state.terminal = selTop.value; selPL.value = selTop.value; atualizarInfoTerminal(); };
-    selPL .onchange = ()=>{ state.terminal = selPL.value;  selTop.value = selPL.value;  atualizarInfoTerminal(); };
-  }
-
-  function sincronizarSelectores(){
-    $('sel_terminal').value = $('sel_terminal_pl').value;
-    state.terminal = $('sel_terminal').value;
-    atualizarInfoTerminal();
-  }
-
-  function atualizarInfoTerminal(){
-    $('terminal_info').innerHTML = state.terminal ? `Terminal selecionado: <b>${state.terminal}</b>` : '';
-  }
-
-  function getTermCode(){
-    state.terminal = $('sel_terminal_pl').value || $('sel_terminal').value || '';
-    return state.terminal || '';
-  }
-
-  // ===== uploads =====
-  async function listarUploads(){
-    const r = await fetch('/api/v1/uploads'); const j = await r.json();
-    if(!j.ok) return;
-    state.uploads = j.items||[];
-    renderUploads();
-  }
-  function renderUploads(){
-    const box = $('uploads'); box.innerHTML='';
-    state.uploads.forEach(u=>{
-      const div = document.createElement('div'); div.className='upload-item';
-      div.innerHTML = `
-        <div>
-          <div><b>${u.filename}</b></div>
-          <div class="muted">${u.type} &nbsp;—&nbsp; ${u.url}</div>
-        </div>
-        <div class="row">
-          <a class="btn ghost small" href="${u.url}" target="_blank">abrir</a>
-          <button class="btn small" onclick="usarUpload('${u.url.replaceAll("'", "\\'")}', '${u.type}')">usar</button>
+// ---------------- Summary (cartões) ----------------
+async function loadSummary(){
+  const r = await api('/api/v1/summary');
+  const j = await r.json();
+  const box = qs('#summary');
+  box.innerHTML = '';
+  if(!j.ok){ box.innerHTML = '—'; return; }
+  // agrupa por cliente
+  const by = {};
+  j.items.forEach(x=>{
+    by[x.client_code] ??= {name:x.client_name, code:x.client_code, terms:[]};
+    by[x.client_code].terms.push(x);
+  });
+  Object.values(by).forEach(cli=>{
+    cli.terms.sort((a,b)=>a.term-b.term);
+    cli.terms.forEach(t=>{
+      const el = document.createElement('div');
+      el.className='card';
+      el.innerHTML = `
+        <div class="flex" style="justify-content:space-between">
+          <div>
+            <div><span class="badge">${cli.name}</span></div>
+            <div class="mt8"><strong>${t.display_code}</strong></div>
+            <div class="status mt8">
+              ${t.online?'<span class="okdot"></span>online':'<span class="baddot"></span>offline'}
+              • itens: ${t.items} • v${t.config_version||0}
+            </div>
+            ${t.playing?`<div class="mt8"><span class="pill">tocando</span> ${t.playing}</div>`:''}
+          </div>
+          <div class="grid" style="min-width:140px">
+            <button class="btn" onclick="manage('${t.display_code}')">Gerenciar</button>
+            <button class="btn alt" onclick="viewConfig('${t.display_code}')">Ver Config</button>
+            <button class="btn warn" onclick="restart('${t.display_code}')">Reiniciar</button>
+          </div>
         </div>`;
-      box.appendChild(div);
+      box.appendChild(el);
     });
-  }
-  function usarUpload(url,type){
-    $('add_from').value='url';
-    $('add_url').value = url;
-    $('add_type').value = type || 'video';
-    if(type==='image' && !$('add_dur').value) $('add_dur').value = '10';
-  }
-  async function enviarUploads(){
-    const fi = $('file'); if(!fi.files.length){ alert('Escolha arquivos'); return; }
-    for(const f of fi.files){
-      const fd = new FormData(); fd.append('file', f);
-      const r = await fetch('/upload',{method:'POST',body:fd});
-      const j = await r.json();
-      if(!j.ok){ alert('Falha ao enviar: '+f.name); return; }
-    }
-    fi.value='';
-    await listarUploads();
-    alert('Uploads enviados!');
-  }
+  });
+}
 
-  // ===== playlist em memória =====
-  function normalizeItem(it){
-    let t = (it.type||'').toLowerCase();
-    if(!t) t = it.url && /\.(png|jpg|jpeg|gif|webp)$/i.test(it.url) ? 'image' : 'video';
-    let d = parseInt(it.duration||0,10);
-    if(t==='image' && (!d || d<=0)) d = 10;
-    if(t==='video') d = 0;
-    return {type:t, url:it.url.trim(), duration:d};
-  }
-  function adicionarItem(){
-    const mode = $('add_from').value;
-    let url = $('add_url').value.trim();
-    if(!url){ alert('Informe a URL ou use um upload.'); return; }
-    const type = $('add_type').value;
-    const duration = parseInt($('add_dur').value||'0',10);
-    state.items.push(normalizeItem({type,url,duration}));
-    $('add_url').value=''; $('add_dur').value='';
-    renderPlaylist();
-  }
-  function limparPlaylist(){ state.items=[]; renderPlaylist(); }
+async function manage(code){
+  // carrega detalhe e joga tudo no builder
+  const r = await api('/api/v1/terminal?code='+encodeURIComponent(code));
+  const j = await r.json();
+  if(!j.ok){ alert('Erro ao carregar'); return; }
+  // popula selects
+  await refreshClientSelects(true); // garante options
+  qs('#top_terminal').value = code;
+  qs('#pl_terminal').value  = code;
+  // uploads
+  STATE.uploads = j.uploads || [];
+  renderUploads();
+  // playlist
+  STATE.currentCode = code;
+  STATE.playlist = (j.config && j.config.playlist) || [];
+  renderPlaylist();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function viewConfig(code){ window.open('/api/v1/config?code='+encodeURIComponent(code),'_blank'); }
+async function restart(code){ await api('/api/v1/terminal/command',{method:'POST',body:JSON.stringify({code,cmd:'restart'})}); alert('Comando enviado'); }
 
-  function renderPlaylist(){
-    const box = $('playlist_list'); box.innerHTML='';
-    state.items.forEach((it, idx)=>{
-      const div = document.createElement('div'); div.className='pl-item'; div.draggable=true;
-      div.addEventListener('dragstart', e=>{ e.dataTransfer.setData('text/plain', idx) });
-      div.addEventListener('dragover', e=>e.preventDefault());
-      div.addEventListener('drop', e=>{
-        e.preventDefault();
-        const from = parseInt(e.dataTransfer.getData('text/plain'),10);
-        const to = idx;
-        const item = state.items.splice(from,1)[0];
-        state.items.splice(to,0,item);
-        renderPlaylist();
-      });
-      div.innerHTML = `
-        <span class="drag">☰</span>
-        <span class="pill">${idx+1}. ${it.type.toUpperCase()}</span>
-        <input class="w-120" value="${it.duration||0}" oninput="updDur(${idx}, this.value)" ${it.type==='video'?'disabled':''} title="duração (s)">
-        <input style="flex:1 1 260px" value="${it.url}" oninput="updUrl(${idx}, this.value)">
-        <button class="btn ghost small" onclick="moveUp(${idx})">↑</button>
-        <button class="btn ghost small" onclick="moveDown(${idx})">↓</button>
-        <button class="btn outline small" onclick="remItem(${idx})">Remover</button>`;
-      box.appendChild(div);
+// ---------------- Cliente / terminais ----------------
+async function createClient(){
+  const name = qs('#c_name').value.trim();
+  const code = qs('#c_code').value.trim();
+  const terms= parseInt(qs('#c_terms').value || '1',10);
+  const days = parseInt(qs('#c_days').value || '30',10);
+  const r = await api('/api/v1/client',{method:'POST',body:JSON.stringify({name,client_code:code,terminals:terms,license_days:days})});
+  const j = await r.json();
+  if(!j.ok){ alert('Erro: '+(j.error||'falha')); return; }
+  await refreshClientSelects();
+  await loadSummary();
+  alert(`Cliente salvo: ${code}`);
+}
+async function refreshClientSelects(skipMsg){
+  const r = await api('/api/v1/clients');
+  const j = await r.json();
+  const top = qs('#top_terminal');
+  const pl  = qs('#pl_terminal');
+  top.innerHTML=''; pl.innerHTML='';
+  if(!j.ok) return;
+  j.items.forEach(c=>{
+    c.terminals.forEach(t=>{
+      const code = `${c.code}-${String(t).padStart(2,'0')}`;
+      const label = `${c.name} — ${code}`;
+      const o1 = new Option(label, code); top.add(o1);
+      const o2 = new Option(label, code); pl.add(o2);
     });
-  }
-  function updDur(i,v){ let d=parseInt(v||'0',10); if(isNaN(d)) d=0; state.items[i].duration=d; }
-  function updUrl(i,v){ state.items[i].url=v.trim(); }
-  function moveUp(i){ if(i<=0) return; const a=state.items[i-1]; state.items[i-1]=state.items[i]; state.items[i]=a; renderPlaylist(); }
-  function moveDown(i){ if(i>=state.items.length-1) return; const a=state.items[i+1]; state.items[i+1]=state.items[i]; state.items[i]=a; renderPlaylist(); }
-  function remItem(i){ state.items.splice(i,1); renderPlaylist(); }
+  });
+  if(!skipMsg) alert('Listas de terminais atualizadas.');
+}
+function syncTop(){ qs('#pl_terminal').value = qs('#top_terminal').value; }
 
-  // ===== carregar/salvar =====
-  async function carregarPlaylist(){
-    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
-    const r = await fetch('/api/v1/config?code='+encodeURIComponent(code));
+// ---------------- Uploads ----------------
+async function sendFiles(){
+  const fileInput = qs('#file');
+  if(!fileInput.files.length) return;
+  for(const f of fileInput.files){
+    const form = new FormData(); form.append('file', f);
+    const r = await fetch('/upload',{method:'POST',body:form});
     const j = await r.json();
-    if(!j.ok){ alert('Não foi possível carregar a playlist'); return; }
-    state.items = (j.playlist||[]).map(it=>{
-      let url=it.url||''; try{ const root=location.origin; if(url.startsWith(root)) url=url.substring(root.length); }catch(e){}
-      return normalizeItem({type:it.type,url,duration:it.duration});
-    });
-    $('refresh_minutes').value = j.refresh_minutes||10;
-    $('update_hours').value = (j.update_schedule_hours||[6,12,18]).join(',');
-    renderPlaylist();
-    $('diag').textContent = JSON.stringify(j,null,2);
+    if(j.ok) STATE.uploads.unshift({filename:j.filename,url:j.url,type:j.type});
   }
+  fileInput.value="";
+  renderUploads();
+}
+async function listUploads(){
+  const r = await api('/api/v1/uploads');
+  const j = await r.json();
+  STATE.uploads = j.ok ? j.items : [];
+  renderUploads();
+}
+function renderUploads(){
+  const box = qs('#uploads'); box.innerHTML='';
+  STATE.uploads.forEach(u=>{
+    const row = document.createElement('div');
+    row.className='flex'; row.style.justifyContent='space-between';
+    row.innerHTML = `<div>${u.type.toUpperCase()} — <a href="${u.url}" target="_blank">${u.url}</a></div>
+                     <div class="flex">
+                       <button class="btn alt" onclick="useUpload('${u.url}','${u.type}')">usar</button>
+                     </div>`;
+    box.appendChild(row);
+  });
+}
+function useUpload(url,type){
+  qs('#item_url').value = url;
+  qs('#item_type').value = type || 'video';
+}
 
-  async function salvarPlaylist(){
-    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
-    const items = state.items.map(normalizeItem);
-    const refresh = parseInt($('refresh_minutes').value||'10',10);
-    const hours   = $('update_hours').value.split(',').map(x=>parseInt(x.trim(),10)).filter(x=>!isNaN(x));
-    const body = { code, items, refresh_minutes:refresh, update_schedule_hours:hours };
-    const r = await fetch('/api/v1/playlist',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    const j = await r.json();
-    if(!j.ok){ alert('Erro ao salvar: '+(j.error||'')); return; }
-    alert('Playlist salva! Versão '+j.config_version);
-    verConfig();
-  }
+// ---------------- Playlist ----------------
+async function loadPlaylistFromTop(){
+  qs('#pl_terminal').value = qs('#top_terminal').value;
+  await loadPlaylist();
+}
+async function loadPlaylist(){
+  const code = qs('#pl_terminal').value;
+  const r = await api('/api/v1/config?code='+encodeURIComponent(code));
+  const j = await r.json();
+  if(!j.ok){ alert('Erro ao carregar'); return; }
+  STATE.currentCode = code;
+  STATE.playlist = j.playlist || [];
+  renderPlaylist();
+}
+function renderPlaylist(){
+  const box = qs('#playlist'); box.innerHTML='';
+  // “lista editável” simples
+  STATE.playlist.forEach((it,idx)=>{
+    const row = document.createElement('div');
+    row.className='flex';
+    row.innerHTML = `
+      <span class="pill">${it.type}</span>
+      <input style="flex:1" value="${it.url}" oninput="STATE.playlist[${idx}].url=this.value" />
+      <input type="number" placeholder="duração (img/RSS)" value="${it.duration||0}" 
+             oninput="STATE.playlist[${idx}].duration=parseInt(this.value||0,10)" />
+      <button class="btn alt" onclick="move(${idx},-1)">↑</button>
+      <button class="btn alt" onclick="move(${idx},1)">↓</button>
+      <button class="btn warn" onclick="removeItem(${idx})">remover</button>`;
+    box.appendChild(row);
+  });
+}
+function move(i,dir){
+  const j = i+dir;
+  if(j<0 || j>=STATE.playlist.length) return;
+  const tmp = STATE.playlist[i];
+  STATE.playlist[i]=STATE.playlist[j]; STATE.playlist[j]=tmp;
+  renderPlaylist();
+}
+function removeItem(i){ STATE.playlist.splice(i,1); renderPlaylist(); }
+function addItem(){
+  const type = qs('#item_type').value;
+  const url  = (qs('#item_url').value || '').trim() || qs('#item_pick').value || '';
+  if(!url){ alert('Informe URL ou escolha dos uploads'); return; }
+  let dur = parseInt(qs('#item_dur').value||'0',10);
+  if(type==='image' && dur<=0) dur=10;
+  if(type==='video') dur=0;
+  STATE.playlist.push({type,url,duration:dur});
+  renderPlaylist();
+}
+// Select rápido “escolher dos uploads”
+function fillPicker(){
+  const sel = qs('#item_pick'); sel.innerHTML='';
+  STATE.uploads.forEach(u=> sel.add(new Option(u.url,u.url)));
+}
+async function savePlaylist(){
+  const code = qs('#pl_terminal').value;
+  const body = {
+    code,
+    items: STATE.playlist,
+    refresh_minutes: 10,
+    update_schedule_hours: [6,12,18]
+  };
+  const r = await api('/api/v1/playlist',{method:'POST',body:JSON.stringify(body)});
+  const j = await r.json();
+  if(!j.ok){ alert('Erro ao salvar: '+(j.error||'falha')); return; }
+  alert('Playlist salva (v'+j.config_version+')!');
+  await loadSummary(); // atualiza cartões
+}
 
-  async function salvarSettings(){
-    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
-    const [client, term] = code.split('-');
-    const refresh = parseInt($('refresh_minutes').value||'10',10);
-    const hours   = $('update_hours').value.split(',').map(x=>parseInt(x.trim(),10)).filter(x=>!isNaN(x));
-    const r = await fetch('/api/v1/terminal/settings',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ client_code:client, term:parseInt(term,10), refresh_minutes: refresh, update_schedule_hours: hours })
-    });
-    const j = await r.json();
-    if(!j.ok){ alert('Erro ao salvar agenda'); return; }
-    alert('Agenda salva!');
-  }
-
-  // ===== comandos / pareamento =====
-  async function cmdRestart(){
-    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
-    const [client,term] = code.split('-');
-    const r = await fetch('/api/v1/terminal/command',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ client_code:client, term:parseInt(term,10), type:'restart_player' })
-    });
-    const j = await r.json(); if(!j.ok){ alert('Erro'); return; }
-    alert('Comando enviado');
-  }
-  async function reqPair(){
-    const r = await fetch('/api/v1/pair/request',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
-    const j = await r.json(); if(!j.ok){ alert('Erro'); return; }
-    $('pair_code').value = j.pair_code; alert('Código gerado: '+j.pair_code);
-  }
-  async function attachPair(){
-    const pair=$('pair_code').value.trim(); if(!pair){ alert('Informe o código'); return; }
-    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
-    const [client,term]=code.split('-');
-    const r = await fetch('/api/v1/pair/attach',{method:'POST',headers:{'Content-Type':'application/json'}, body: JSON.stringify({pair_code:pair, client_code:client, term:parseInt(term,10)})});
-    const j = await r.json(); if(!j.ok){ alert('Erro ao anexar'); return; }
-    alert('Pareado com sucesso!');
-  }
-
-  // ===== diagnóstico =====
-  async function ping(){ const r = await fetch('/api/v1/ping'); const j = await r.json(); $('diag').textContent=JSON.stringify(j,null,2); }
-  async function verConfig(){
-    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
-    const r = await fetch('/api/v1/config?code='+encodeURIComponent(code));
-    const j = await r.json(); $('diag').textContent = JSON.stringify(j,null,2);
-  }
+// ---------------- Boot
+(async function init(){
+  await refreshClientSelects(true);
+  await listUploads();
+  fillPicker();
+  await loadSummary();
+})();
 </script>
 </body>
 </html>
