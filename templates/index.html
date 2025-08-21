@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>{{ branding.name or 'Studio RS TV' }} — Painel</title>
 <style>
-  :root { --bg:#0b1220; --fg:#e8eefc; --muted:#94a3b8; --card:#111827; --ok:#22c55e; --bad:#ef4444; --brand: {{ branding.primary_color or '#0d1b2a' }};}
-  body{background:var(--bg);color:var(--fg);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; margin:0;padding:24px}
+  :root{--bg:#0b1220;--fg:#e8eefc;--muted:#94a3b8;--card:#111827;--ok:#22c55e;--bad:#ef4444;--brand:{{ branding.primary_color or '#0d1b2a' }};}
+  body{background:var(--bg);color:var(--fg);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;margin:0;padding:24px}
   h1{margin:0 0 16px 0;font-size:22px}
   a{color:#93c5fd;text-decoration:none}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand img{height:26px}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   .card{background:var(--card);border-radius:10px;padding:14px}
   .grid{display:grid;gap:10px}
@@ -23,35 +26,43 @@
   .upload-list{max-height:260px;overflow:auto;border:1px dashed #334155;border-radius:8px;padding:6px}
   .pill{font-size:12px;padding:2px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155;color:#cbd5e1}
   .status{font-size:12px}
-  .okdot{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block;margin-right:6px}
-  .baddot{width:8px;height:8px;border-radius:50%;background:var(--bad);display:inline-block;margin-right:6px}
-  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .okdot,.baddot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+  .okdot{background:var(--ok)} .baddot{background:var(--bad)}
   .badge{background:var(--brand);color:#fff;padding:2px 8px;border-radius:999px;font-size:12px}
-  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-  .brand{display:flex;align-items:center;gap:10px}
-  .brand img{height:26px}
   footer{margin-top:24px;color:#9aa2b2;font-size:12px}
+  /* accordion nativo */
+  details{border:1px solid #273244;border-radius:10px;padding:10px;background:#0f172a}
+  details+details{margin-top:10px}
+  details>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between}
+  details>summary::-webkit-details-marker{display:none}
+  .client-head{display:flex;align-items:center;gap:10px}
+  .client-sub{color:#9aa2b2;font-size:12px}
+  .term-list{margin-top:10px;border-top:1px dashed #334155;padding-top:10px;display:grid;gap:8px}
+  .term-row{display:flex;align-items:center;justify-content:space-between}
+  .shadow{box-shadow:0 0 0 1px #1f2937 inset;border-radius:8px;padding:8px}
+  .chip-current{background:var(--brand);color:#fff;border-radius:999px;padding:2px 10px;font-size:12px}
+  /* modal simples */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+  .modal>div{background:#0f172a;border:1px solid #273244;border-radius:12px;padding:16px;min-width:280px}
 </style>
 </head>
 <body>
 
 <header>
   <div class="brand">
-    {% if branding.logo_url %}
-      <img src="{{ branding.logo_url }}" alt="logo">
-    {% endif %}
+    {% if branding.logo_url %}<img src="{{ branding.logo_url }}" alt="logo">{% endif %}
     <h1>{{ branding.name or 'Studio RS TV' }} — Painel</h1>
   </div>
-  <a class="btn alt" href="{{ support_link }}" target="_blank">Suporte WhatsApp</a>
+  <div class="flex">
+    <button class="btn alt" id="btnToggleAll" onclick="toggleAll()">Expandir todos</button>
+    <a class="btn alt" href="{{ support_link }}" target="_blank">Suporte WhatsApp</a>
+  </div>
 </header>
 
-<!-- BLOCO: Clientes & Terminais -->
+<!-- BLOCO: Clientes (recolhidos por padrão) -->
 <div class="card">
-  <div class="flex" style="justify-content:space-between">
-    <strong>Clientes & Terminais</strong>
-    <button class="btn alt" onclick="loadSummary()">Atualizar lista</button>
-  </div>
-  <div id="summary" class="cards mt12"></div>
+  <strong>Clientes</strong>
+  <div id="clientsBox" class="mt12"></div>
 </div>
 
 <div class="row mt16">
@@ -59,22 +70,10 @@
   <div class="card">
     <strong>Cliente & Terminais</strong>
     <div class="grid mt8">
-      <div>
-        <label>Nome do cliente</label>
-        <input id="c_name" placeholder="ex.: Frade" />
-      </div>
-      <div>
-        <label>Código do cliente</label>
-        <input id="c_code" placeholder="ex.: 001" />
-      </div>
-      <div>
-        <label>Qtd terminais</label>
-        <input id="c_terms" type="number" min="1" value="1" />
-      </div>
-      <div>
-        <label>Licença (dias)</label>
-        <input id="c_days" type="number" min="1" value="30" />
-      </div>
+      <div><label>Nome do cliente</label><input id="c_name" placeholder="ex.: Frade"></div>
+      <div><label>Código do cliente</label><input id="c_code" placeholder="ex.: 001"></div>
+      <div><label>Qtd terminais</label><input id="c_terms" type="number" min="1" value="1"></div>
+      <div><label>Licença (dias)</label><input id="c_days" type="number" min="1" value="30"></div>
     </div>
     <button class="btn mt12" onclick="createClient()">Criar/Atualizar</button>
 
@@ -89,7 +88,7 @@
   <div class="card">
     <strong>Uploads</strong>
     <div class="flex mt8">
-      <input id="file" type="file" multiple />
+      <input id="file" type="file" multiple>
       <button class="btn" onclick="sendFiles()">Enviar</button>
     </div>
     <div id="uploads" class="upload-list mt12"></div>
@@ -98,7 +97,11 @@
 
 <!-- PLAYLIST -->
 <div class="card mt16">
-  <strong>Playlist por Terminal</strong>
+  <div class="flex" style="justify-content:space-between">
+    <strong>Playlist por Terminal</strong>
+    <span id="editingChip" class="chip-current" style="display:none"></span>
+  </div>
+
   <div class="grid mt8">
     <div>
       <label>Terminal (playlist)</label>
@@ -107,6 +110,7 @@
     <div class="flex">
       <button class="btn alt" onclick="syncTop()">Sincronizar com topo</button>
       <button class="btn" onclick="loadPlaylist()">Carregar Playlist</button>
+      <button class="btn warn" onclick="clearBuilder()">Limpar builder</button>
     </div>
   </div>
 
@@ -118,8 +122,8 @@
         <option value="rss">RSS</option>
       </select>
       <select id="item_pick"></select>
-      <input id="item_url" placeholder="URL ou /static/uploads/arquivo.ext" />
-      <input id="item_dur" type="number" min="1" placeholder="Duração (s) para imagem/RSS" />
+      <input id="item_url" placeholder="URL ou /static/uploads/arquivo.ext">
+      <input id="item_dur" type="number" min="1" placeholder="Duração (s) p/ imagem/RSS">
       <button class="btn" onclick="addItem()">Adicionar</button>
       <button class="btn ok" onclick="savePlaylist()">Salvar Playlist</button>
     </div>
@@ -128,219 +132,205 @@
   <div id="playlist" class="grid mt12"></div>
 </div>
 
-<footer>
-  Desenvolvido por: Studio RS Ilhabela — suporte via botão no topo.
-</footer>
+<footer>Desenvolvido por: Studio RS Ilhabela — suporte via botão no topo.</footer>
+
+<!-- Modal: escolher terminal do cliente -->
+<div id="pickModal" class="modal" onclick="hideModal(event)">
+  <div onclick="event.stopPropagation()">
+    <div class="flex" style="justify-content:space-between">
+      <strong>Escolher terminal</strong>
+      <button class="btn alt" onclick="document.getElementById('pickModal').style.display='none'">Fechar</button>
+    </div>
+    <select id="pickSelect" class="mt12"></select>
+    <div class="flex mt12">
+      <button class="btn" onclick="chooseManage()">Gerenciar</button>
+      <button class="btn alt" onclick="chooseView()">Ver config</button>
+    </div>
+  </div>
+</div>
 
 <script>
-const qs = s => document.querySelector(s);
-const api = (u, opt={}) => fetch(u, Object.assign({headers:{'Content-Type':'application/json'}}, opt));
+const qs=s=>document.querySelector(s);
+const api=(u,opt={})=>fetch(u,Object.assign({headers:{'Content-Type':'application/json'}},opt));
 
-let STATE = { uploads: [], playlist: [], currentCode: "" };
+let STATE={uploads:[],playlist:[],currentCode:""};
+let SUMMARY_CACHE={};  // por cliente -> [terminais]
+let expanded=false;
 
-// ---------------- Summary (cartões) ----------------
+// ---------- Clients accordion ----------
 async function loadSummary(){
-  const r = await api('/api/v1/summary');
-  const j = await r.json();
-  const box = qs('#summary');
-  box.innerHTML = '';
-  if(!j.ok){ box.innerHTML = '—'; return; }
-  // agrupa por cliente
-  const by = {};
+  const r=await api('/api/v1/summary'); const j=await r.json();
+  const box=qs('#clientsBox'); box.innerHTML='';
+  if(!j.ok){box.innerHTML='—';return;}
+  // agrupa
+  SUMMARY_CACHE={};
   j.items.forEach(x=>{
-    by[x.client_code] ??= {name:x.client_name, code:x.client_code, terms:[]};
-    by[x.client_code].terms.push(x);
+    (SUMMARY_CACHE[x.client_code]??=[]).push(x);
   });
-  Object.values(by).forEach(cli=>{
-    cli.terms.sort((a,b)=>a.term-b.term);
-    cli.terms.forEach(t=>{
-      const el = document.createElement('div');
-      el.className='card';
-      el.innerHTML = `
-        <div class="flex" style="justify-content:space-between">
-          <div>
-            <div><span class="badge">${cli.name}</span></div>
-            <div class="mt8"><strong>${t.display_code}</strong></div>
-            <div class="status mt8">
-              ${t.online?'<span class="okdot"></span>online':'<span class="baddot"></span>offline'}
-              • itens: ${t.items} • v${t.config_version||0}
+  Object.keys(SUMMARY_CACHE).sort().forEach(code=>{
+    const terms=SUMMARY_CACHE[code].sort((a,b)=>a.term-b.term);
+    const name=terms[0].client_name;
+    const online=terms.filter(t=>t.online).length;
+    const details=document.createElement('details'); // recolhido por padrão
+    details.innerHTML=`
+      <summary>
+        <div class="client-head">
+          <span class="badge">${name}</span>
+          <span class="client-sub">cliente ${code} • ${terms.length} terminais • <span class="${online?'':'baddot'}"></span>${online}/${terms.length} online</span>
+        </div>
+        <div class="flex">
+          <button class="btn" onclick="openPicker('${code}');event.preventDefault();">Gerenciar</button>
+        </div>
+      </summary>
+      <div class="term-list">
+        ${terms.map(t=>`
+          <div class="term-row shadow">
+            <div>
+              <strong>${t.display_code}</strong>
+              <div class="status">${t.online?'<span class="okdot"></span>online':'<span class="baddot"></span>offline'} • itens: ${t.items} • v${t.config_version||0}</div>
             </div>
-            ${t.playing?`<div class="mt8"><span class="pill">tocando</span> ${t.playing}</div>`:''}
-          </div>
-          <div class="grid" style="min-width:140px">
-            <button class="btn" onclick="manage('${t.display_code}')">Gerenciar</button>
-            <button class="btn alt" onclick="viewConfig('${t.display_code}')">Ver Config</button>
-            <button class="btn warn" onclick="restart('${t.display_code}')">Reiniciar</button>
-          </div>
-        </div>`;
-      box.appendChild(el);
-    });
+            <div class="flex">
+              <button class="btn" onclick="manage('${t.display_code}')">Editar</button>
+              <button class="btn alt" onclick="viewConfig('${t.display_code}')">Ver config</button>
+              <button class="btn warn" onclick="restart('${t.display_code}')">Reiniciar</button>
+            </div>
+          </div>`).join('')}
+      </div>`;
+    box.appendChild(details);
   });
+  // botao global
+  expanded=false; qs('#btnToggleAll').innerText='Expandir todos';
+}
+function toggleAll(){
+  const list=[...document.querySelectorAll('#clientsBox details')];
+  expanded=!expanded;
+  list.forEach(d=>d.open=expanded);
+  qs('#btnToggleAll').innerText=expanded?'Recolher todos':'Expandir todos';
 }
 
+// picker modal
+function openPicker(clientCode){
+  const sel=qs('#pickSelect'); sel.innerHTML='';
+  (SUMMARY_CACHE[clientCode]||[]).sort((a,b)=>a.term-b.term).forEach(t=>{
+    sel.add(new Option(`${t.display_code} — ${t.items} itens`,t.display_code));
+  });
+  qs('#pickModal').style.display='flex';
+}
+function hideModal(e){ if(e.target.id==='pickModal') e.target.style.display='none'; }
+function chooseManage(){ const code=qs('#pickSelect').value; qs('#pickModal').style.display='none'; manage(code);}
+function chooseView(){ const code=qs('#pickSelect').value; window.open('/api/v1/config?code='+encodeURIComponent(code),'_blank');}
+
 async function manage(code){
-  // carrega detalhe e joga tudo no builder
-  const r = await api('/api/v1/terminal?code='+encodeURIComponent(code));
-  const j = await r.json();
-  if(!j.ok){ alert('Erro ao carregar'); return; }
-  // popula selects
-  await refreshClientSelects(true); // garante options
-  qs('#top_terminal').value = code;
-  qs('#pl_terminal').value  = code;
-  // uploads
-  STATE.uploads = j.uploads || [];
-  renderUploads();
-  // playlist
-  STATE.currentCode = code;
-  STATE.playlist = (j.config && j.config.playlist) || [];
-  renderPlaylist();
+  const r=await api('/api/v1/terminal?code='+encodeURIComponent(code));
+  const j=await r.json();
+  if(!j.ok){alert('Erro ao carregar');return;}
+  await refreshClientSelects(true);
+  qs('#top_terminal').value=code; qs('#pl_terminal').value=code;
+  STATE.uploads=j.uploads||[]; renderUploads(); fillPicker();
+  STATE.currentCode=code; STATE.playlist=(j.config&&j.config.playlist)||[]; renderPlaylist();
+  showEditingChip(code);
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function viewConfig(code){ window.open('/api/v1/config?code='+encodeURIComponent(code),'_blank'); }
 async function restart(code){ await api('/api/v1/terminal/command',{method:'POST',body:JSON.stringify({code,cmd:'restart'})}); alert('Comando enviado'); }
 
-// ---------------- Cliente / terminais ----------------
+// ---------- Client & terminals ----------
 async function createClient(){
-  const name = qs('#c_name').value.trim();
-  const code = qs('#c_code').value.trim();
-  const terms= parseInt(qs('#c_terms').value || '1',10);
-  const days = parseInt(qs('#c_days').value || '30',10);
-  const r = await api('/api/v1/client',{method:'POST',body:JSON.stringify({name,client_code:code,terminals:terms,license_days:days})});
-  const j = await r.json();
-  if(!j.ok){ alert('Erro: '+(j.error||'falha')); return; }
-  await refreshClientSelects();
-  await loadSummary();
+  const name=qs('#c_name').value.trim();
+  const code=qs('#c_code').value.trim();
+  const terms=parseInt(qs('#c_terms').value||'1',10);
+  const days=parseInt(qs('#c_days').value||'30',10);
+  const r=await api('/api/v1/client',{method:'POST',body:JSON.stringify({name,client_code:code,terminals:terms,license_days:days})});
+  const j=await r.json(); if(!j.ok){alert('Erro: '+(j.error||'falha'));return;}
+  await refreshClientSelects(); await loadSummary();
   alert(`Cliente salvo: ${code}`);
 }
 async function refreshClientSelects(skipMsg){
-  const r = await api('/api/v1/clients');
-  const j = await r.json();
-  const top = qs('#top_terminal');
-  const pl  = qs('#pl_terminal');
-  top.innerHTML=''; pl.innerHTML='';
+  const r=await api('/api/v1/clients'); const j=await r.json();
+  const top=qs('#top_terminal'), pl=qs('#pl_terminal'); top.innerHTML=''; pl.innerHTML='';
   if(!j.ok) return;
-  j.items.forEach(c=>{
-    c.terminals.forEach(t=>{
-      const code = `${c.code}-${String(t).padStart(2,'0')}`;
-      const label = `${c.name} — ${code}`;
-      const o1 = new Option(label, code); top.add(o1);
-      const o2 = new Option(label, code); pl.add(o2);
-    });
-  });
+  j.items.forEach(c=>c.terminals.forEach(t=>{
+    const code=`${c.code}-${String(t).padStart(2,'0')}`; const label=`${c.name} — ${code}`;
+    top.add(new Option(label,code)); pl.add(new Option(label,code));
+  }));
   if(!skipMsg) alert('Listas de terminais atualizadas.');
 }
-function syncTop(){ qs('#pl_terminal').value = qs('#top_terminal').value; }
+function syncTop(){ qs('#pl_terminal').value=qs('#top_terminal').value; }
+function showEditingChip(code){ const chip=qs('#editingChip'); chip.textContent='Editando: '+code; chip.style.display='inline-block'; }
 
-// ---------------- Uploads ----------------
+// ---------- Uploads ----------
 async function sendFiles(){
-  const fileInput = qs('#file');
-  if(!fileInput.files.length) return;
-  for(const f of fileInput.files){
-    const form = new FormData(); form.append('file', f);
-    const r = await fetch('/upload',{method:'POST',body:form});
-    const j = await r.json();
+  const inp=qs('#file'); if(!inp.files.length) return;
+  for(const f of inp.files){
+    const form=new FormData(); form.append('file',f);
+    const r=await fetch('/upload',{method:'POST',body:form}); const j=await r.json();
     if(j.ok) STATE.uploads.unshift({filename:j.filename,url:j.url,type:j.type});
   }
-  fileInput.value="";
-  renderUploads();
+  inp.value=""; renderUploads(); fillPicker();
 }
 async function listUploads(){
-  const r = await api('/api/v1/uploads');
-  const j = await r.json();
-  STATE.uploads = j.ok ? j.items : [];
-  renderUploads();
+  const r=await api('/api/v1/uploads'); const j=await r.json();
+  STATE.uploads=j.ok?j.items:[]; renderUploads(); fillPicker();
 }
 function renderUploads(){
-  const box = qs('#uploads'); box.innerHTML='';
+  const box=qs('#uploads'); box.innerHTML='';
   STATE.uploads.forEach(u=>{
-    const row = document.createElement('div');
-    row.className='flex'; row.style.justifyContent='space-between';
-    row.innerHTML = `<div>${u.type.toUpperCase()} — <a href="${u.url}" target="_blank">${u.url}</a></div>
-                     <div class="flex">
-                       <button class="btn alt" onclick="useUpload('${u.url}','${u.type}')">usar</button>
-                     </div>`;
+    const row=document.createElement('div'); row.className='flex'; row.style.justifyContent='space-between';
+    row.innerHTML=`<div>${u.type.toUpperCase()} — <a href="${u.url}" target="_blank">${u.url}</a></div>
+                   <div class="flex"><button class="btn alt" onclick="useUpload('${u.url}','${u.type}')">usar</button></div>`;
     box.appendChild(row);
   });
 }
-function useUpload(url,type){
-  qs('#item_url').value = url;
-  qs('#item_type').value = type || 'video';
-}
+function useUpload(url,type){ qs('#item_url').value=url; qs('#item_type').value=type||'video'; }
+function fillPicker(){ const sel=qs('#item_pick'); sel.innerHTML=''; STATE.uploads.forEach(u=>sel.add(new Option(u.url,u.url))); }
 
-// ---------------- Playlist ----------------
-async function loadPlaylistFromTop(){
-  qs('#pl_terminal').value = qs('#top_terminal').value;
-  await loadPlaylist();
-}
+// ---------- Playlist ----------
+async function loadPlaylistFromTop(){ qs('#pl_terminal').value=qs('#top_terminal').value; await loadPlaylist(); }
 async function loadPlaylist(){
-  const code = qs('#pl_terminal').value;
-  const r = await api('/api/v1/config?code='+encodeURIComponent(code));
-  const j = await r.json();
-  if(!j.ok){ alert('Erro ao carregar'); return; }
-  STATE.currentCode = code;
-  STATE.playlist = j.playlist || [];
-  renderPlaylist();
+  const code=qs('#pl_terminal').value;
+  const r=await api('/api/v1/config?code='+encodeURIComponent(code)); const j=await r.json();
+  if(!j.ok){alert('Erro ao carregar');return;}
+  STATE.currentCode=code; STATE.playlist=j.playlist||[]; renderPlaylist(); showEditingChip(code);
 }
 function renderPlaylist(){
-  const box = qs('#playlist'); box.innerHTML='';
-  // “lista editável” simples
+  const box=qs('#playlist'); box.innerHTML='';
   STATE.playlist.forEach((it,idx)=>{
-    const row = document.createElement('div');
-    row.className='flex';
-    row.innerHTML = `
+    const row=document.createElement('div'); row.className='flex';
+    row.innerHTML=`
       <span class="pill">${it.type}</span>
-      <input style="flex:1" value="${it.url}" oninput="STATE.playlist[${idx}].url=this.value" />
-      <input type="number" placeholder="duração (img/RSS)" value="${it.duration||0}" 
-             oninput="STATE.playlist[${idx}].duration=parseInt(this.value||0,10)" />
+      <input style="flex:1" value="${it.url}" oninput="STATE.playlist[${idx}].url=this.value">
+      <input type="number" placeholder="duração (img/RSS)" value="${it.duration||0}"
+             oninput="STATE.playlist[${idx}].duration=parseInt(this.value||0,10)">
       <button class="btn alt" onclick="move(${idx},-1)">↑</button>
       <button class="btn alt" onclick="move(${idx},1)">↓</button>
       <button class="btn warn" onclick="removeItem(${idx})">remover</button>`;
     box.appendChild(row);
   });
 }
-function move(i,dir){
-  const j = i+dir;
-  if(j<0 || j>=STATE.playlist.length) return;
-  const tmp = STATE.playlist[i];
-  STATE.playlist[i]=STATE.playlist[j]; STATE.playlist[j]=tmp;
-  renderPlaylist();
-}
+function move(i,d){ const j=i+d; if(j<0||j>=STATE.playlist.length) return; [STATE.playlist[i],STATE.playlist[j]]=[STATE.playlist[j],STATE.playlist[i]]; renderPlaylist(); }
 function removeItem(i){ STATE.playlist.splice(i,1); renderPlaylist(); }
 function addItem(){
-  const type = qs('#item_type').value;
-  const url  = (qs('#item_url').value || '').trim() || qs('#item_pick').value || '';
-  if(!url){ alert('Informe URL ou escolha dos uploads'); return; }
-  let dur = parseInt(qs('#item_dur').value||'0',10);
-  if(type==='image' && dur<=0) dur=10;
-  if(type==='video') dur=0;
-  STATE.playlist.push({type,url,duration:dur});
-  renderPlaylist();
+  const type=qs('#item_type').value;
+  const url=(qs('#item_url').value||'').trim()||qs('#item_pick').value||'';
+  if(!url){alert('Informe URL ou escolha dos uploads');return;}
+  let dur=parseInt(qs('#item_dur').value||'0',10);
+  if(type==='image'&&dur<=0) dur=10; if(type==='video') dur=0;
+  STATE.playlist.push({type,url,duration:dur}); renderPlaylist();
 }
-// Select rápido “escolher dos uploads”
-function fillPicker(){
-  const sel = qs('#item_pick'); sel.innerHTML='';
-  STATE.uploads.forEach(u=> sel.add(new Option(u.url,u.url)));
-}
+function clearBuilder(){ STATE.playlist=[]; renderPlaylist(); }
+
 async function savePlaylist(){
-  const code = qs('#pl_terminal').value;
-  const body = {
-    code,
-    items: STATE.playlist,
-    refresh_minutes: 10,
-    update_schedule_hours: [6,12,18]
-  };
-  const r = await api('/api/v1/playlist',{method:'POST',body:JSON.stringify(body)});
-  const j = await r.json();
-  if(!j.ok){ alert('Erro ao salvar: '+(j.error||'falha')); return; }
-  alert('Playlist salva (v'+j.config_version+')!');
-  await loadSummary(); // atualiza cartões
+  const code=qs('#pl_terminal').value;
+  const body={code,items:STATE.playlist,refresh_minutes:10,update_schedule_hours:[6,12,18]};
+  const r=await api('/api/v1/playlist',{method:'POST',body:JSON.stringify(body)}); const j=await r.json();
+  if(!j.ok){alert('Erro ao salvar: '+(j.error||'falha'));return;}
+  alert('Playlist salva (v'+j.config_version+')!'); await loadSummary();
 }
 
-// ---------------- Boot
+// ---------- Boot ----------
 (async function init(){
   await refreshClientSelects(true);
   await listUploads();
-  fillPicker();
   await loadSummary();
 })();
 </script>
