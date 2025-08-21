@@ -1,329 +1,363 @@
-import os, json, re, hashlib, time, uuid
-from datetime import datetime, timedelta, timezone
-from flask import Flask, request, jsonify, render_template
-from werkzeug.utils import secure_filename
+import os, json, datetime, random, string
+from pathlib import Path
+from flask import Flask, request, jsonify, render_template, send_from_directory
 
-# ---------- Branding ----------
-APP_NAME   = os.getenv("BRAND_NAME", "Studio RS TV")
-PRIMARY    = os.getenv("BRAND_COLOR", "#0a2458")                 # azul marinho
-LOGO_URL   = os.getenv("BRAND_LOGO_URL", "")                    # png branco recomendado
-SUPPORT_WA = os.getenv("SUPPORT_WA", "https://wa.me/5512996273989")
+# -----------------------------------------------------------------------------
+# Configurações
+# -----------------------------------------------------------------------------
+APP_ROOT   = Path(__file__).parent.resolve()
+STATIC_DIR = APP_ROOT / "static"
+UPLOAD_DIR = STATIC_DIR / "uploads"
 
-# ---------- Paths ----------
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "static/uploads")
-DB_PATH    = os.getenv("DB_PATH",    "data/db.json")
+# Onde vamos persistir os JSONs (mude em Render via env var e um Disk)
+DATA_DIR   = Path(os.getenv("DATA_DIR", APP_ROOT / "data"))
+PLAY_DIR   = DATA_DIR / "playlists"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+PLAY_DIR.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-ALLOWED_EXT = {".mp4", ".mov", ".mkv", ".webm", ".png", ".jpg", ".jpeg", ".gif", ".webp"}
-CODE_RE     = re.compile(r'^([A-Za-z0-9]+)-([0-9]{1,3})$')
+CLIENTS_FILE   = DATA_DIR / "clients.json"   # {"clients":[{code,name,terminals:[1,2],license_until: "ISO"}]}
+BRANDING_FILE  = DATA_DIR / "branding.json"  # opcional
+PAIRS_FILE     = DATA_DIR / "pairs.json"     # {"<pairCode>": {"client_code":..., "term":...}}
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+ALLOWED_EXT = {".mp4",".mov",".mkv",".webm",".png",".jpg",".jpeg",".gif",".webp",".mp3",".wav"}
 
-# ---------- utils ----------
-def now_utc(): return datetime.now(timezone.utc)
-def iso(dt):   return dt.astimezone(timezone.utc).isoformat()
-def parse_iso(s): return datetime.fromisoformat(s.replace("Z","+00:00"))
+# -----------------------------------------------------------------------------
+# Utilidades
+# -----------------------------------------------------------------------------
+def utcnow_iso():
+    return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
 
-def norm_client(c): return f"{int(c):03d}" if (c or "").isdigit() else (c or "").strip()
-def norm_term(t):   return f"{int(t):02d}" if (t or "").isdigit()   else (t or "").strip()
+def load_json(path: Path, default):
+    try:
+        if path.exists():
+            with path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return default
 
-def split_code(code:str):
-    m = CODE_RE.match((code or "").strip())
-    if not m: return None, None
-    return norm_client(m.group(1)), norm_term(m.group(2))
+def save_json(path: Path, data):
+    tmp = path.with_suffix(".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    tmp.replace(path)
 
-def _is_image(path:str):
-    return os.path.splitext((path or "").lower())[1] in (".png",".jpg",".jpeg",".gif",".webp")
+def safe_filename(name: str) -> str:
+    ok = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    return "".join(c for c in name if c in ok)
 
-def _abs_url(u:str):
-    if not u: return u
-    if u.startswith("http://") or u.startswith("https://"): return u
-    if not u.startswith("/"): u="/"+u
-    return request.url_root.rstrip("/") + u
+def guess_type(p: Path) -> str:
+    ext = p.suffix.lower()
+    if ext in {".png",".jpg",".jpeg",".gif",".webp"}:
+        return "image"
+    if ext in {".mp4",".mov",".mkv",".webm"}:
+        return "video"
+    if ext in {".mp3",".wav"}:
+        return "audio"
+    return "file"
 
-def sha256_of_file(path:str):
-    h=hashlib.sha256()
-    with open(path,"rb") as f:
-        for chunk in iter(lambda: f.read(1024*256), b""):
-            h.update(chunk)
-    return h.hexdigest()
+def parse_code(code: str):
+    """Retorna (client_code, term_int) a partir de '001-02'."""
+    code = (code or "").strip()
+    if "-" not in code:
+        return None, None
+    c, t = code.split("-", 1)
+    try:
+        term = int(t)
+        return c, term
+    except Exception:
+        return None, None
 
-def ensure_db():
-    if not os.path.exists(DB_PATH):
-        with open(DB_PATH,"w",encoding="utf-8") as f:
-            json.dump({"clients": {}, "pairs": {}}, f, ensure_ascii=False, indent=2)
+# -----------------------------------------------------------------------------
+# Branding
+# -----------------------------------------------------------------------------
+def get_branding():
+    b = load_json(BRANDING_FILE, {})
+    # sobrescreve por ENV se tiver
+    b.setdefault("name",  os.getenv("BRAND_NAME", "Studio RS TV"))
+    b.setdefault("primary_color", os.getenv("PRIMARY_COLOR", "#0d1b2a"))
+    b.setdefault("logo_url", os.getenv("BRAND_LOGO_URL", ""))  # png transparente recomendado
+    return b
 
-def load_db():
-    ensure_db()
-    with open(DB_PATH,"r",encoding="utf-8") as f:
-        return json.load(f)
+# -----------------------------------------------------------------------------
+# App
+# -----------------------------------------------------------------------------
+app = Flask(__name__, static_folder=str(STATIC_DIR), template_folder=str(APP_ROOT / "templates"))
 
-def save_db(db:dict):
-    tmp=DB_PATH+".tmp"
-    with open(tmp,"w",encoding="utf-8") as f:
-        json.dump(db,f,ensure_ascii=False,indent=2)
-    os.replace(tmp,DB_PATH)
+@app.route("/")
+def index():
+    return render_template(
+        "index.html",
+        branding=get_branding(),
+        support_link=os.getenv("SUPPORT_WA", "https://wa.me/5512996273989")
+    )
 
-def get_branding(): return {"name":APP_NAME,"primary_color":PRIMARY,"logo_url":LOGO_URL}
-
-# ---------- modelo ----------
-def ensure_client(db, client_code, name=None, license_days=30):
-    c=norm_client(client_code)
-    cli=db.setdefault("clients",{}).get(c)
-    if not cli:
-        exp=now_utc()+timedelta(days=license_days)
-        cli={"code":c,"name":name or f"Cliente {c}","license_expires_at":iso(exp),"terminals":{}}
-        db["clients"][c]=cli
-    else:
-        if name: cli["name"]=name
-    return cli
-
-def ensure_terms(cli, q):
-    for i in range(1,int(q)+1):
-        t=norm_term(i)
-        cli["terminals"].setdefault(t,{
-            "playlist":[],
-            "refresh_minutes":10,
-            "update_schedule_hours":[6,12,18],      # 06:00 / 12:00 / 18:00
-            "config_version":0,
-            "last_applied_version":0,
-            "last_applied_at":None,
-            "last_seen_at":None,
-            "commands":[],                           # fila: [{id,type,params,status}]
-        })
-
-def license_ok(cli): 
-    try: return parse_iso(cli["license_expires_at"]) >= now_utc()
-    except: return False
-
-def get_term(db, ccode, tcode):
-    cli = db.get("clients",{}).get(norm_client(ccode))
-    if not cli: return None, None
-    return cli, cli["terminals"].get(norm_term(tcode))
-
-# ---------- views ----------
-@app.get("/")
-def index():        return render_template("index.html", branding=get_branding(), support_link=SUPPORT_WA)
-@app.get("/clients")
-def clients():      return render_template("clients.html", branding=get_branding())
-
-# ---------- uploads ----------
-@app.post("/upload")
+# -----------------------------------------------------------------------------
+# Uploads
+# -----------------------------------------------------------------------------
+@app.route("/upload", methods=["POST"])
 def upload():
-    f = request.files.get("file")
-    if not f or not f.filename: return jsonify({"ok":False,"error":"empty_filename"}),400
-    name=secure_filename(f.filename); ext=os.path.splitext(name)[1].lower()
-    if ext not in ALLOWED_EXT: return jsonify({"ok":False,"error":"ext_not_allowed"}),400
-    ts=datetime.now().strftime("%Y%m%d-%H%M%S")
-    final=f"{ts}-{name}"; path=os.path.join(UPLOAD_DIR,final); f.save(path)
-    rel=f"/static/uploads/{final}"
-    return jsonify({"ok":True,"url":rel,"type":"image" if _is_image(rel) else "video"})
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "missing file"}), 400
+    f = request.files["file"]
+    if not f.filename:
+        return jsonify({"ok": False, "error": "empty filename"}), 400
 
-@app.get("/api/v1/uploads")
-def list_uploads():
-    items=[]
-    for fname in sorted(os.listdir(UPLOAD_DIR)):
-        p=os.path.join(UPLOAD_DIR,fname)
-        if not os.path.isfile(p): continue
-        ext=os.path.splitext(fname)[1].lower()
-        if ext not in ALLOWED_EXT: continue
-        items.append({"filename":fname,"url":f"/static/uploads/{fname}","type":"image" if _is_image(fname) else "video"})
-    return jsonify({"ok":True,"items":items})
+    ext = Path(f.filename).suffix.lower()
+    if ext not in ALLOWED_EXT:
+        return jsonify({"ok": False, "error": "ext not allowed"}), 400
 
-# ---------- clientes/licença ----------
-@app.get("/api/v1/clients")
-def api_clients():
-    db=load_db(); out=[]
-    for c,cli in db.get("clients",{}).items():
-        out.append({
-            "code":cli["code"],"name":cli.get("name"),
-            "license_expires_at":cli.get("license_expires_at"),
-            "license_ok":license_ok(cli),
-            "terminals":sorted(list(cli.get("terminals",{}).keys()))
+    # prefixo com data/hora para evitar colisão
+    stamp = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    fname = f"{stamp}-{safe_filename(f.filename)}"
+    dest  = UPLOAD_DIR / fname
+    f.save(dest)
+
+    url = f"/static/uploads/{fname}"
+    return jsonify({"ok": True, "url": url, "type": guess_type(dest), "filename": fname})
+
+@app.route("/api/v1/uploads")
+def api_list_uploads():
+    items = []
+    for p in sorted(UPLOAD_DIR.glob("*")):
+        if not p.is_file(): 
+            continue
+        items.append({
+            "filename": p.name,
+            "url": f"/static/uploads/{p.name}",
+            "type": guess_type(p),
+            "size": p.stat().st_size
         })
-    out=sorted(out,key=lambda x:x["code"])
-    return jsonify({"ok":True,"items":out})
+    return jsonify({"ok": True, "items": items})
 
-@app.post("/api/v1/client")
+# -----------------------------------------------------------------------------
+# Clientes / Terminais
+# -----------------------------------------------------------------------------
+def read_clients():
+    data = load_json(CLIENTS_FILE, {"clients": []})
+    # normaliza
+    out = []
+    for c in data.get("clients", []):
+        code = str(c.get("code","")).strip()
+        name = c.get("name") or f"Cliente {code}"
+        terms = c.get("terminals") or []
+        out.append({
+            "code": code,
+            "name": name,
+            "terminals": terms,
+            "license_until": c.get("license_until")
+        })
+    return {"clients": out}
+
+def write_clients(clients_data):
+    save_json(CLIENTS_FILE, clients_data)
+
+@app.route("/api/v1/clients")
+def api_clients():
+    data = read_clients()
+    # devolve em um formato que o index espera
+    items = []
+    for c in data["clients"]:
+        items.append({
+            "code": c["code"],
+            "name": c["name"],
+            "terminals": c["terminals"]
+        })
+    return jsonify({"ok": True, "items": items})
+
+@app.route("/api/v1/client", methods=["POST"])
 def api_upsert_client():
-    d=request.get_json(force=True,silent=True) or {}
-    code=d.get("client_code"); name=d.get("name"); days=int(d.get("license_days") or 30)
-    terms=int(d.get("terminals") or 1)
-    if not code: return jsonify({"ok":False,"error":"missing client_code"}),400
-    db=load_db(); cli=ensure_client(db,code,name,days); ensure_terms(cli,terms); save_db(db)
-    return jsonify({"ok":True,"client":cli})
+    j = request.get_json(silent=True) or {}
+    name  = (j.get("name") or "").strip()
+    code  = (j.get("client_code") or "").strip()
+    terms = int(j.get("terminals") or 1)
+    license_days = int(j.get("license_days") or 30)
 
-@app.post("/api/v1/client/<code>/license/extend")
-def api_extend_license(code):
-    days=int((request.get_json(force=True,silent=True) or {}).get("days") or 15)
-    db=load_db(); cli=db.get("clients",{}).get(norm_client(code))
-    if not cli: return jsonify({"ok":False,"error":"client_not_found"}),404
-    base=max(parse_iso(cli["license_expires_at"]), now_utc())
-    cli["license_expires_at"]=iso(base+timedelta(days=days)); save_db(db)
-    return jsonify({"ok":True,"license_expires_at":cli["license_expires_at"]})
+    if not code:
+        return jsonify({"ok": False, "error": "missing client_code"}), 400
+    if terms < 1: terms = 1
 
-# ---------- playlist / terminal ----------
-def bump_version(term:dict):
-    term["config_version"] = int(term.get("config_version") or 0) + 1
+    data = read_clients()
+    # calcula license_until
+    until = (datetime.datetime.utcnow() + datetime.timedelta(days=license_days)).date().isoformat()
 
-@app.post("/api/v1/playlist")
-def api_set_playlist():
-    d=request.get_json(force=True,silent=True) or {}
-    code=(d.get("code") or "").strip()
-    client,term = split_code(code)
-    if not client:
-        client = norm_client(d.get("client_code") or "")
-        term   = norm_term(d.get("term") or "1")
-    if not client or not term: return jsonify({"ok":False,"error":"invalid code"}),400
+    terminals = list(range(1, terms + 1))
+    found = False
+    for c in data["clients"]:
+        if c["code"] == code:
+            c["name"] = name or c["name"]
+            c["terminals"] = terminals
+            c["license_until"] = until
+            found = True
+            break
+    if not found:
+        data["clients"].append({
+            "code": code,
+            "name": name or f"Cliente {code}",
+            "terminals": terminals,
+            "license_until": until
+        })
 
-    db=load_db(); cli, t = get_term(db,client,term)
-    if not cli or not t: return jsonify({"ok":False,"error":"client_or_terminal_not_found"}),404
+    write_clients(data)
+    return jsonify({"ok": True, "client": code, "terminals": terminals})
 
-    t["playlist"] = d.get("items") or []
-    if "refresh_minutes" in d: t["refresh_minutes"]=int(d["refresh_minutes"])
-    if "update_schedule_hours" in d: t["update_schedule_hours"] = list(map(int, d["update_schedule_hours"]))
-    bump_version(t); save_db(db)
-    return jsonify({"ok":True,"code":f"{client}-{term}","config_version":t["config_version"]})
+# -----------------------------------------------------------------------------
+# Playlists / Config do terminal
+# -----------------------------------------------------------------------------
+def playlist_path(client_code: str, term: int) -> Path:
+    return PLAY_DIR / f"{client_code}-{str(term).zfill(2)}.json"
 
-@app.post("/api/v1/terminal/settings")
-def api_term_settings():
-    d=request.get_json(force=True,silent=True) or {}
-    client=norm_client(d.get("client_code") or ""); term=norm_term(d.get("term") or "1")
-    if not client or not term: return jsonify({"ok":False,"error":"invalid"}),400
-    db=load_db(); cli, t = get_term(db,client,term)
-    if not cli or not t: return jsonify({"ok":False,"error":"not_found"}),404
-    if "refresh_minutes" in d: t["refresh_minutes"]=int(d["refresh_minutes"])
-    if "update_schedule_hours" in d: t["update_schedule_hours"]=list(map(int,d["update_schedule_hours"]))
-    save_db(db); return jsonify({"ok":True})
+DEFAULT_SCHEDULE_HOURS = [6, 12, 18]
 
-# ---------- comandos para o box ----------
-def queue_cmd(t:dict, cmd_type:str, params:dict=None):
-    t.setdefault("commands",[])
-    t["commands"].append({
-        "id": str(uuid.uuid4()),
-        "type": cmd_type,
-        "params": params or {},
-        "status": "pending",
-        "issued_at": iso(now_utc())
-    })
+def read_config_for(code: str):
+    client, term = parse_code(code)
+    if not client or not term:
+        return None
 
-@app.post("/api/v1/terminal/command")
-def api_command():
-    d=request.get_json(force=True,silent=True) or {}
-    client=norm_client(d.get("client_code") or ""); term=norm_term(d.get("term") or "1")
-    cmd = d.get("type") or "restart_player"
-    db=load_db(); cli,t=get_term(db,client,term)
-    if not cli or not t: return jsonify({"ok":False,"error":"not_found"}),404
-    queue_cmd(t, cmd, d.get("params") or {})
-    save_db(db); return jsonify({"ok":True})
+    p = playlist_path(client, term)
+    if p.exists():
+        cfg = load_json(p, {})
+        # compat older
+        cfg.setdefault("refresh_minutes", 10)
+        cfg.setdefault("update_schedule_hours", DEFAULT_SCHEDULE_HOURS)
+        cfg.setdefault("code", f"{client}-{str(term).zfill(2)}")
+        cfg.setdefault("updated_at", utcnow_iso())
+        cfg.setdefault("ok", True)
+        return cfg
 
-# ---------- pareamento ----------
-@app.post("/api/v1/pair/request")
-def pair_request():
-    d=request.get_json(force=True,silent=True) or {}
-    device_id=(d.get("device_id") or str(uuid.uuid4()))[:64]
-    code=str(uuid.uuid4())[:6].upper()
-    db=load_db()
-    db.setdefault("pairs",{})[code]={
-        "device_id": device_id,
-        "created_at": iso(now_utc()),
-        "expires_at": iso(now_utc()+timedelta(minutes=10)),
-        "attached_code": None
-    }
-    save_db(db)
-    return jsonify({"ok":True,"pair_code":code})
-
-@app.post("/api/v1/pair/attach")
-def pair_attach():
-    d=request.get_json(force=True,silent=True) or {}
-    pair_code=(d.get("pair_code") or "").strip().upper()
-    client=norm_client(d.get("client_code") or ""); term=norm_term(d.get("term") or "1")
-    db=load_db(); pair=db.get("pairs",{}).get(pair_code)
-    if not pair: return jsonify({"ok":False,"error":"invalid_pair"}),404
-    if parse_iso(pair["expires_at"]) < now_utc(): return jsonify({"ok":False,"error":"expired"}),400
-    pair["attached_code"]=f"{client}-{term}"; save_db(db)
-    return jsonify({"ok":True})
-
-@app.get("/api/v1/pair/poll")
-def pair_poll():
-    code=(request.args.get("pair_code") or "").strip().upper()
-    db=load_db(); pair=db.get("pairs",{}).get(code)
-    if not pair: return jsonify({"ok":False,"error":"invalid_pair"}),404
-    if pair.get("attached_code"):
-        return jsonify({"ok":True,"code":pair["attached_code"]})
-    return jsonify({"ok":True,"waiting":True})
-
-# ---------- heartbeat & ack ----------
-@app.post("/api/v1/heartbeat")
-def heartbeat():
-    """
-    body: { "code":"001-01", "player_version":"x", "state":"playing|downloading|idle",
-            "applied_version": 3 }
-    server returns pending commands.
-    """
-    d=request.get_json(force=True,silent=True) or {}
-    client,term=split_code(d.get("code") or "")
-    if not client: return jsonify({"ok":False,"error":"invalid"}),400
-    db=load_db(); cli,t=get_term(db,client,term)
-    if not cli or not t: return jsonify({"ok":False,"error":"not_found"}),404
-    t["last_seen_at"]=iso(now_utc())
-    if "applied_version" in d:
-        t["last_applied_version"]=int(d["applied_version"])
-        t["last_applied_at"]=iso(now_utc())
-    cmds=[c for c in t.get("commands",[]) if c.get("status")=="pending"]
-    for c in cmds: c["status"]="sent"
-    save_db(db)
-    return jsonify({"ok":True,"commands":cmds})
-
-@app.post("/api/v1/ack_config")
-def ack_config():
-    d=request.get_json(force=True,silent=True) or {}
-    client,term=split_code(d.get("code") or "")
-    version=int(d.get("config_version") or 0)
-    db=load_db(); cli,t=get_term(db,client,term)
-    if not cli or not t: return jsonify({"ok":False,"error":"not_found"}),404
-    t["last_applied_version"]=version; t["last_applied_at"]=iso(now_utc()); save_db(db)
-    return jsonify({"ok":True})
-
-# ---------- config para o APK ----------
-@app.get("/api/v1/config")
-def api_config():
-    code=(request.args.get("code") or "").strip()
-    client,term=split_code(code)
-    if not client: return jsonify({"ok":False,"error":"invalid_code_format"}),400
-    db=load_db(); cli,t=get_term(db,client,term)
-    if not cli or not t: return jsonify({"ok":False,"error":"not_found"}),404
-    if not license_ok(cli): return jsonify({"ok":False,"error":"license_expired"}),403
-
-    items=[]; assets=[]
-    for it in t.get("playlist") or []:
-        url=(it.get("url") or "").strip()
-        typ=(it.get("type") or "").strip().lower()
-        dur=int(it.get("duration") or 0)
-        if not typ: typ="image" if _is_image(url) else "video"
-        if typ=="image" and dur<=0: dur=int(os.getenv("IMAGE_DURATION_SECONDS","10"))
-        if typ=="video": dur=0
-        absurl=_abs_url(url)
-        items.append({"type":typ,"url":absurl,"duration":dur})
-        assets.append({"url":absurl,"type":typ})
-
-    cfg={
+    # sem playlist salva ainda — devolve básico
+    return {
+        "code": f"{client}-{str(term).zfill(2)}",
         "ok": True,
-        "code": f"{client}-{term}",
-        "campaign": f"{cli.get('name','Cliente')} — {client}-{term}",
-        "playlist": items,
-        "assets": assets,
-        "config_version": int(t.get("config_version") or 0),
-        "refresh_minutes": int(t.get("refresh_minutes") or 10),
-        "update_schedule_hours": t.get("update_schedule_hours") or [6,12,18],
-        "updated_at": iso(now_utc())
+        "playlist": [],
+        "refresh_minutes": 10,
+        "update_schedule_hours": DEFAULT_SCHEDULE_HOURS,
+        "updated_at": utcnow_iso(),
+        "config_version": 1
     }
+
+@app.route("/api/v1/config")
+def api_config():
+    code = request.args.get("code","").strip()
+    cfg = read_config_for(code)
+    if not cfg:
+        return jsonify({"ok": False, "error": "invalid code"}), 400
     return jsonify(cfg)
 
-# ---------- health ----------
-@app.get("/api/v1/ping")
-def ping(): return jsonify({"ok":True,"ts":iso(now_utc())})
+@app.route("/api/v1/playlist", methods=["POST"])
+def api_save_playlist():
+    j = request.get_json(silent=True) or {}
+    code = (j.get("code") or "").strip()
+    items = j.get("items") or []
+    refresh = int(j.get("refresh_minutes") or 10)
+    hours   = j.get("update_schedule_hours") or DEFAULT_SCHEDULE_HOURS
 
-if __name__=="__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT","8000")), debug=True)
+    client, term = parse_code(code)
+    if not client or not term:
+        return jsonify({"ok": False, "error": "invalid code"}), 400
+
+    # normaliza itens
+    norm = []
+    for it in items:
+        t = (it.get("type") or "").lower()
+        url = (it.get("url") or "").strip()
+        dur = int(it.get("duration") or 0)
+        if t == "image" and (dur <= 0):
+            dur = 10
+        if t == "video":
+            dur = 0
+        if not url:
+            continue
+        norm.append({"type": t or "video", "url": url, "duration": dur})
+
+    cfg_old = read_config_for(code) or {}
+    version = int(cfg_old.get("config_version") or 0) + 1
+
+    cfg = {
+        "code": f"{client}-{str(term).zfill(2)}",
+        "ok": True,
+        "playlist": norm,
+        "refresh_minutes": refresh,
+        "update_schedule_hours": hours,
+        "updated_at": utcnow_iso(),
+        "config_version": version
+    }
+    save_json(playlist_path(client, term), cfg)
+    return jsonify({"ok": True, "config_version": version})
+
+@app.route("/api/v1/terminal/settings", methods=["POST"])
+def api_save_settings():
+    j = request.get_json(silent=True) or {}
+    client = (j.get("client_code") or "").strip()
+    term   = j.get("term")
+    try:
+        term = int(term)
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid term"}), 400
+
+    refresh = int(j.get("refresh_minutes") or 10)
+    hours   = j.get("update_schedule_hours") or DEFAULT_SCHEDULE_HOURS
+
+    p = playlist_path(client, term)
+    cfg = load_json(p, {})
+    cfg.setdefault("code", f"{client}-{str(term).zfill(2)}")
+    cfg.setdefault("playlist", [])
+    cfg["refresh_minutes"] = refresh
+    cfg["update_schedule_hours"] = hours
+    cfg["updated_at"] = utcnow_iso()
+    cfg.setdefault("config_version", 1)
+    save_json(p, cfg)
+    return jsonify({"ok": True})
+
+# -----------------------------------------------------------------------------
+# Comandos / Pareamento (stubs simples)
+# -----------------------------------------------------------------------------
+@app.route("/api/v1/terminal/command", methods=["POST"])
+def api_command():
+    # Aqui poderíamos enfileirar comando para o player (ex.: restart).
+    # Por enquanto, só retornamos ok.
+    return jsonify({"ok": True})
+
+@app.route("/api/v1/pair/request", methods=["POST"])
+def api_pair_request():
+    # Gera um código que o aparelho exibiria
+    code = "".join(random.choices(string.digits, k=8))
+    pairs = load_json(PAIRS_FILE, {})
+    pairs[code] = {"created_at": utcnow_iso()}
+    save_json(PAIRS_FILE, pairs)
+    return jsonify({"ok": True, "pair_code": code})
+
+@app.route("/api/v1/pair/attach", methods=["POST"])
+def api_pair_attach():
+    j = request.get_json(silent=True) or {}
+    pair_code  = (j.get("pair_code") or "").strip()
+    client     = (j.get("client_code") or "").strip()
+    try:
+        term = int(j.get("term"))
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid term"}), 400
+
+    pairs = load_json(PAIRS_FILE, {})
+    if pair_code not in pairs:
+        return jsonify({"ok": False, "error": "pair not found"}), 404
+    pairs[pair_code] = {"client_code": client, "term": term, "attached_at": utcnow_iso()}
+    save_json(PAIRS_FILE, pairs)
+    return jsonify({"ok": True})
+
+# -----------------------------------------------------------------------------
+# Saúde
+# -----------------------------------------------------------------------------
+@app.route("/api/v1/ping")
+def api_ping():
+    return jsonify({"ok": True, "ts": utcnow_iso()})
+
+# Favicon opcional
+@app.route("/favicon.ico")
+def favicon():
+    return "", 204
+
+# -----------------------------------------------------------------------------
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "8000"))
+    app.run(host="0.0.0.0", port=port)
