@@ -1,49 +1,50 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>{{ branding.name or 'Studio RS TV' }} — Painel</title>
 <style>
-  :root{--bg:#0b1220;--fg:#e8eefc;--muted:#94a3b8;--card:#111827;--ok:#22c55e;--bad:#ef4444;--brand:{{ branding.primary_color or '#0d1b2a' }};}
-  body{background:var(--bg);color:var(--fg);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;margin:0;padding:24px}
-  h1{margin:0 0 16px 0;font-size:22px}
-  a{color:#93c5fd;text-decoration:none}
-  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-  .brand{display:flex;align-items:center;gap:10px}
-  .brand img{height:26px}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .card{background:var(--card);border-radius:10px;padding:14px}
-  .grid{display:grid;gap:10px}
-  .btn{background:#2563eb;border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
-  .btn.alt{background:#374151}
-  .btn.warn{background:#f59e0b}
-  .btn.ok{background:#16a34a}
-  input,select{width:100%;padding:8px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--fg)}
-  label{font-size:12px;color:var(--muted)}
-  .mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt24{margin-top:24px}
-  .flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .upload-list{max-height:260px;overflow:auto;border:1px dashed #334155;border-radius:8px;padding:6px}
-  .pill{font-size:12px;padding:2px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155;color:#cbd5e1}
-  .status{font-size:12px}
-  .okdot,.baddot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
-  .okdot{background:var(--ok)} .baddot{background:var(--bad)}
-  .badge{background:var(--brand);color:#fff;padding:2px 8px;border-radius:999px;font-size:12px}
-  footer{margin-top:24px;color:#9aa2b2;font-size:12px}
-  /* accordion nativo */
-  details{border:1px solid #273244;border-radius:10px;padding:10px;background:#0f172a}
-  details+details{margin-top:10px}
-  details>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between}
-  details>summary::-webkit-details-marker{display:none}
-  .client-head{display:flex;align-items:center;gap:10px}
-  .client-sub{color:#9aa2b2;font-size:12px}
-  .term-list{margin-top:10px;border-top:1px dashed #334155;padding-top:10px;display:grid;gap:8px}
-  .term-row{display:flex;align-items:center;justify-content:space-between}
-  .shadow{box-shadow:0 0 0 1px #1f2937 inset;border-radius:8px;padding:8px}
-  .chip-current{background:var(--brand);color:#fff;border-radius:999px;padding:2px 10px;font-size:12px}
-  /* modal simples */
-  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
-  .modal>div{background:#0f172a;border:1px solid #273244;border-radius:12px;padding:16px;min-width:280px}
+:root{
+  --bg:#0b1220;--fg:#e8eefc;--muted:#94a3b8;--card:#111827;
+  --ok:#22c55e;--bad:#ef4444;--warn:#f59e0b;
+  --brand:{{ branding.primary_color or '#0d1b2a' }};
+}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);color:var(--fg);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
+h1{margin:0;font-size:22px}
+a{color:#93c5fd;text-decoration:none}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.brand{display:flex;gap:10px;align-items:center}
+.brand img{height:26px}
+.card{background:var(--card);border:1px solid #273244;border-radius:10px;padding:14px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid{display:grid;gap:10px}
+label{font-size:12px;color:var(--muted)}
+input,select{width:100%;padding:8px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--fg)}
+.btn{background:#2563eb;border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
+.btn.alt{background:#374151}.btn.warn{background:var(--warn)}.btn.ok{background:#16a34a}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt24{margin-top:24px}
+.flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.upload-list{max-height:260px;overflow:auto;border:1px dashed #334155;border-radius:8px;padding:6px}
+.pill{font-size:12px;padding:2px 8px;border-radius:999px;background:#0f172a;border:1px solid #334155;color:#cbd5e1}
+.badge{background:var(--brand);color:#fff;padding:2px 8px;border-radius:999px;font-size:12px}
+.status{font-size:12px;color:#cbd5e1}
+.okdot,.baddot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
+.okdot{background:var(--ok)}.baddot{background:var(--bad)}
+details{border:1px solid #273244;border-radius:10px;padding:10px;background:#0f172a}
+details+details{margin-top:10px}
+details>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details>summary::-webkit-details-marker{display:none}
+.term-row{display:flex;justify-content:space-between;align-items:center;border:1px solid #283249;border-radius:8px;padding:8px;background:#0c1528}
+.shadow{box-shadow:0 0 0 1px #1f2937 inset;border-radius:8px;padding:8px}
+.chip{background:#0f172a;border:1px solid #334155;border-radius:999px;padding:2px 10px;font-size:12px}
+.chip.ok{border-color:var(--ok);color:#a7f3d0}
+.chip.pend{border-color:var(--warn);color:#fde68a}
+.chip.unk{border-color:#475569;color:#cbd5e1}
+#editingChip{display:none}
+.toast{position:fixed;right:16px;bottom:16px;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px 14px}
+footer{margin-top:20px;color:#9aa2b2;font-size:12px}
 </style>
 </head>
 <body>
@@ -55,12 +56,14 @@
   </div>
   <div class="flex">
     <button class="btn alt" id="btnToggleAll" onclick="toggleAll()">Expandir todos</button>
+    <button class="btn alt" onclick="loadSummary(true)">Atualizar</button>
+    <label class="flex" style="gap:6px"><input type="checkbox" id="autoRefresh" onchange="toggleAuto()"/> Auto-refresh</label>
     <a class="btn alt" href="{{ support_link }}" target="_blank">Suporte WhatsApp</a>
   </div>
 </header>
 
-<!-- BLOCO: Clientes (recolhidos por padrão) -->
-<div class="card">
+<!-- CLIENTES (sempre no topo) -->
+<div class="card" id="clientsSection">
   <strong>Clientes</strong>
   <div id="clientsBox" class="mt12"></div>
 </div>
@@ -70,7 +73,7 @@
   <div class="card">
     <strong>Cliente & Terminais</strong>
     <div class="grid mt8">
-      <div><label>Nome do cliente</label><input id="c_name" placeholder="ex.: Frade"></div>
+      <div><label>Nome do cliente</label><input id="c_name" placeholder="ex.: João"></div>
       <div><label>Código do cliente</label><input id="c_code" placeholder="ex.: 001"></div>
       <div><label>Qtd terminais</label><input id="c_terms" type="number" min="1" value="1"></div>
       <div><label>Licença (dias)</label><input id="c_days" type="number" min="1" value="30"></div>
@@ -80,7 +83,10 @@
     <div class="mt16">
       <label>Selecionar terminal (topo)</label>
       <select id="top_terminal"></select>
-      <button class="btn alt mt8" onclick="loadPlaylistFromTop()">Carregar Playlist</button>
+      <div class="flex mt8">
+        <button class="btn alt" onclick="loadPlaylistFromTop()">Carregar Playlist</button>
+        <span id="editingChip" class="chip">Editando: —</span>
+      </div>
     </div>
   </div>
 
@@ -88,7 +94,7 @@
   <div class="card">
     <strong>Uploads</strong>
     <div class="flex mt8">
-      <input id="file" type="file" multiple>
+      <input id="file" type="file" multiple />
       <button class="btn" onclick="sendFiles()">Enviar</button>
     </div>
     <div id="uploads" class="upload-list mt12"></div>
@@ -99,13 +105,19 @@
 <div class="card mt16">
   <div class="flex" style="justify-content:space-between">
     <strong>Playlist por Terminal</strong>
-    <span id="editingChip" class="chip-current" style="display:none"></span>
+    <span id="editingChip2" class="chip" style="display:none"></span>
   </div>
 
   <div class="grid mt8">
-    <div>
-      <label>Terminal (playlist)</label>
-      <select id="pl_terminal"></select>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <label>Terminal (playlist)</label>
+        <select id="pl_terminal"></select>
+      </div>
+      <div>
+        <label>Nome da campanha (opcional)</label>
+        <input id="pl_name" placeholder="ex.: Promo Agosto"/>
+      </div>
     </div>
     <div class="flex">
       <button class="btn alt" onclick="syncTop()">Sincronizar com topo</button>
@@ -115,15 +127,13 @@
   </div>
 
   <div class="grid mt16">
-    <div class="flex" style="gap:12px">
+    <div class="flex" style="gap:12px;flex-wrap:wrap">
       <select id="item_type">
-        <option value="video">Vídeo</option>
-        <option value="image">Imagem</option>
-        <option value="rss">RSS</option>
+        <option value="video">Vídeo</option><option value="image">Imagem</option><option value="rss">RSS</option>
       </select>
       <select id="item_pick"></select>
-      <input id="item_url" placeholder="URL ou /static/uploads/arquivo.ext">
-      <input id="item_dur" type="number" min="1" placeholder="Duração (s) p/ imagem/RSS">
+      <input id="item_url" placeholder="URL ou /static/uploads/arquivo.ext" style="min-width:280px">
+      <input id="item_dur" type="number" min="1" placeholder="Duração (s) p/ imagem/RSS" style="width:180px">
       <button class="btn" onclick="addItem()">Adicionar</button>
       <button class="btn ok" onclick="savePlaylist()">Salvar Playlist</button>
     </div>
@@ -132,120 +142,89 @@
   <div id="playlist" class="grid mt12"></div>
 </div>
 
-<footer>Desenvolvido por: Studio RS Ilhabela — suporte via botão no topo.</footer>
+<footer>Desenvolvido por: Studio RS Ilhabela — suporte pelo botão no topo.</footer>
 
-<!-- Modal: escolher terminal do cliente -->
-<div id="pickModal" class="modal" onclick="hideModal(event)">
-  <div onclick="event.stopPropagation()">
-    <div class="flex" style="justify-content:space-between">
-      <strong>Escolher terminal</strong>
-      <button class="btn alt" onclick="document.getElementById('pickModal').style.display='none'">Fechar</button>
-    </div>
-    <select id="pickSelect" class="mt12"></select>
-    <div class="flex mt12">
-      <button class="btn" onclick="chooseManage()">Gerenciar</button>
-      <button class="btn alt" onclick="chooseView()">Ver config</button>
-    </div>
-  </div>
-</div>
+<div id="toast" class="toast" style="display:none"></div>
 
 <script>
 const qs=s=>document.querySelector(s);
 const api=(u,opt={})=>fetch(u,Object.assign({headers:{'Content-Type':'application/json'}},opt));
-
-let STATE={uploads:[],playlist:[],currentCode:""};
-let SUMMARY_CACHE={};  // por cliente -> [terminais]
+let STATE={uploads:[],playlist:[],currentCode:"",autoTimer:null};
+let SUMMARY={};
 let expanded=false;
 
-// ---------- Clients accordion ----------
-async function loadSummary(){
+// -------- util --------
+function toast(msg,ms=2500){const t=qs('#toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',ms);}
+function setPushed(code,ver){try{localStorage.setItem('pushed:'+code,String(ver||''));}catch{}}
+function getPushed(code){try{return localStorage.getItem('pushed:'+code)||"";}catch{return "";}}
+
+// -------- clientes --------
+async function loadSummary(scrollTop=false){
   const r=await api('/api/v1/summary'); const j=await r.json();
   const box=qs('#clientsBox'); box.innerHTML='';
-  if(!j.ok){box.innerHTML='—';return;}
-  // agrupa
-  SUMMARY_CACHE={};
-  j.items.forEach(x=>{
-    (SUMMARY_CACHE[x.client_code]??=[]).push(x);
-  });
-  Object.keys(SUMMARY_CACHE).sort().forEach(code=>{
-    const terms=SUMMARY_CACHE[code].sort((a,b)=>a.term-b.term);
-    const name=terms[0].client_name;
-    const online=terms.filter(t=>t.online).length;
-    const details=document.createElement('details'); // recolhido por padrão
-    details.innerHTML=`
+  if(!j.ok){box.textContent='—';return;}
+  SUMMARY={};
+  j.items.forEach(x=>{(SUMMARY[x.client_code]??=[]).push(x);});
+  Object.keys(SUMMARY).sort().forEach(code=>{
+    const list=SUMMARY[code].sort((a,b)=>a.term-b.term);
+    const name=list[0].client_name, online=list.filter(t=>t.online).length;
+    const d=document.createElement('details'); d.open=false;
+    d.innerHTML=`
       <summary>
-        <div class="client-head">
+        <div class="flex">
           <span class="badge">${name}</span>
-          <span class="client-sub">cliente ${code} • ${terms.length} terminais • <span class="${online?'':'baddot'}"></span>${online}/${terms.length} online</span>
+          <span class="status">cliente ${code} • ${list.length} terminais • ${online}/${list.length} online</span>
         </div>
         <div class="flex">
-          <button class="btn" onclick="openPicker('${code}');event.preventDefault();">Gerenciar</button>
+          <button class="btn alt" onclick="manage('${list[0].client_code}-${String(list[0].term).padStart(2,'0')}');event.preventDefault();">Gerenciar 1º</button>
         </div>
       </summary>
-      <div class="term-list">
-        ${terms.map(t=>`
-          <div class="term-row shadow">
+      <div class="grid mt8">
+        ${list.map(t=>{
+          const disp=t.display_code, pushed=getPushed(disp), cfg=String(t.config_version||"");
+          let syncClass='unk', syncTxt='Desconhecido';
+          if(pushed){ if(pushed===cfg){syncClass='ok'; syncTxt='OK';} else {syncClass='pend'; syncTxt='Pendente';}}
+          return `
+          <div class="term-row">
             <div>
-              <strong>${t.display_code}</strong>
-              <div class="status">${t.online?'<span class="okdot"></span>online':'<span class="baddot"></span>offline'} • itens: ${t.items} • v${t.config_version||0}</div>
+              <div class="flex"><strong>${disp}</strong><span class="chip ${syncClass}">${syncTxt}</span></div>
+              <div class="status">${t.online?'<span class="okdot"></span>online':'<span class="baddot"></span>offline'} • itens: ${t.items} • versão: ${cfg||'-'} • ${t.updated_at||''}</div>
             </div>
             <div class="flex">
-              <button class="btn" onclick="manage('${t.display_code}')">Editar</button>
-              <button class="btn alt" onclick="viewConfig('${t.display_code}')">Ver config</button>
-              <button class="btn warn" onclick="restart('${t.display_code}')">Reiniciar</button>
+              <button class="btn" onclick="manage('${disp}')">Editar</button>
+              <button class="btn alt" onclick="window.open('/api/v1/config?code=${encodeURIComponent(disp)}','_blank')">Ver config</button>
+              <button class="btn warn" onclick="restart('${disp}')">Reiniciar</button>
+              <button class="btn ok" onclick="pushTo('${disp}')">Sincronizar com builder</button>
             </div>
-          </div>`).join('')}
+          </div>`;}).join('')}
       </div>`;
-    box.appendChild(details);
+    box.appendChild(d);
   });
-  // botao global
-  expanded=false; qs('#btnToggleAll').innerText='Expandir todos';
+  if(scrollTop) document.getElementById('clientsSection').scrollIntoView({behavior:'smooth'});
 }
 function toggleAll(){
-  const list=[...document.querySelectorAll('#clientsBox details')];
   expanded=!expanded;
-  list.forEach(d=>d.open=expanded);
+  document.querySelectorAll('#clientsBox details').forEach(d=>d.open=expanded);
   qs('#btnToggleAll').innerText=expanded?'Recolher todos':'Expandir todos';
 }
-
-// picker modal
-function openPicker(clientCode){
-  const sel=qs('#pickSelect'); sel.innerHTML='';
-  (SUMMARY_CACHE[clientCode]||[]).sort((a,b)=>a.term-b.term).forEach(t=>{
-    sel.add(new Option(`${t.display_code} — ${t.items} itens`,t.display_code));
-  });
-  qs('#pickModal').style.display='flex';
+function toggleAuto(){
+  const on=qs('#autoRefresh').checked;
+  if(on){ STATE.autoTimer=setInterval(()=>loadSummary(false),10000); } else { clearInterval(STATE.autoTimer); }
 }
-function hideModal(e){ if(e.target.id==='pickModal') e.target.style.display='none'; }
-function chooseManage(){ const code=qs('#pickSelect').value; qs('#pickModal').style.display='none'; manage(code);}
-function chooseView(){ const code=qs('#pickSelect').value; window.open('/api/v1/config?code='+encodeURIComponent(code),'_blank');}
 
-async function manage(code){
-  const r=await api('/api/v1/terminal?code='+encodeURIComponent(code));
-  const j=await r.json();
-  if(!j.ok){alert('Erro ao carregar');return;}
-  await refreshClientSelects(true);
-  qs('#top_terminal').value=code; qs('#pl_terminal').value=code;
-  STATE.uploads=j.uploads||[]; renderUploads(); fillPicker();
-  STATE.currentCode=code; STATE.playlist=(j.config&&j.config.playlist)||[]; renderPlaylist();
-  showEditingChip(code);
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-function viewConfig(code){ window.open('/api/v1/config?code='+encodeURIComponent(code),'_blank'); }
-async function restart(code){ await api('/api/v1/terminal/command',{method:'POST',body:JSON.stringify({code,cmd:'restart'})}); alert('Comando enviado'); }
-
-// ---------- Client & terminals ----------
+// -------- cliente/terminais --------
 async function createClient(){
   const name=qs('#c_name').value.trim();
   const code=qs('#c_code').value.trim();
   const terms=parseInt(qs('#c_terms').value||'1',10);
   const days=parseInt(qs('#c_days').value||'30',10);
   const r=await api('/api/v1/client',{method:'POST',body:JSON.stringify({name,client_code:code,terminals:terms,license_days:days})});
-  const j=await r.json(); if(!j.ok){alert('Erro: '+(j.error||'falha'));return;}
-  await refreshClientSelects(); await loadSummary();
-  alert(`Cliente salvo: ${code}`);
+  const j=await r.json();
+  if(!j.ok){alert('Erro: '+(j.error||'falha'));return;}
+  await refreshSelects(); await loadSummary(true);
+  toast(`Cliente salvo: ${code} (${terms} terminais)`);
 }
-async function refreshClientSelects(skipMsg){
+async function refreshSelects(){
   const r=await api('/api/v1/clients'); const j=await r.json();
   const top=qs('#top_terminal'), pl=qs('#pl_terminal'); top.innerHTML=''; pl.innerHTML='';
   if(!j.ok) return;
@@ -253,25 +232,15 @@ async function refreshClientSelects(skipMsg){
     const code=`${c.code}-${String(t).padStart(2,'0')}`; const label=`${c.name} — ${code}`;
     top.add(new Option(label,code)); pl.add(new Option(label,code));
   }));
-  if(!skipMsg) alert('Listas de terminais atualizadas.');
 }
-function syncTop(){ qs('#pl_terminal').value=qs('#top_terminal').value; }
-function showEditingChip(code){ const chip=qs('#editingChip'); chip.textContent='Editando: '+code; chip.style.display='inline-block'; }
+function syncTop(){ qs('#pl_terminal').value=qs('#top_terminal').value; showEditing(qs('#pl_terminal').value); }
+function showEditing(code){ if(!code){qs('#editingChip').style.display='none';qs('#editingChip2').style.display='none';return;}
+  qs('#editingChip').style.display='inline-block'; qs('#editingChip').textContent='Editando: '+code;
+  qs('#editingChip2').style.display='inline-block'; qs('#editingChip2').textContent='Editando: '+code;
+}
 
-// ---------- Uploads ----------
-async function sendFiles(){
-  const inp=qs('#file'); if(!inp.files.length) return;
-  for(const f of inp.files){
-    const form=new FormData(); form.append('file',f);
-    const r=await fetch('/upload',{method:'POST',body:form}); const j=await r.json();
-    if(j.ok) STATE.uploads.unshift({filename:j.filename,url:j.url,type:j.type});
-  }
-  inp.value=""; renderUploads(); fillPicker();
-}
-async function listUploads(){
-  const r=await api('/api/v1/uploads'); const j=await r.json();
-  STATE.uploads=j.ok?j.items:[]; renderUploads(); fillPicker();
-}
+// -------- uploads --------
+async function listUploads(){ const r=await api('/api/v1/uploads'); const j=await r.json(); STATE.uploads=j.ok?j.items:[]; renderUploads(); fillPicker(); }
 function renderUploads(){
   const box=qs('#uploads'); box.innerHTML='';
   STATE.uploads.forEach(u=>{
@@ -281,55 +250,85 @@ function renderUploads(){
     box.appendChild(row);
   });
 }
-function useUpload(url,type){ qs('#item_url').value=url; qs('#item_type').value=type||'video'; }
 function fillPicker(){ const sel=qs('#item_pick'); sel.innerHTML=''; STATE.uploads.forEach(u=>sel.add(new Option(u.url,u.url))); }
+function useUpload(url,type){ qs('#item_url').value=url; qs('#item_type').value=type||'video'; }
+async function sendFiles(){
+  const inp=qs('#file'); if(!inp.files.length) return;
+  for(const f of inp.files){
+    const form=new FormData(); form.append('file',f);
+    const r=await fetch('/upload',{method:'POST',body:form}); const j=await r.json();
+    if(j.ok){ STATE.uploads.unshift({filename:j.filename,url:j.url,type:j.type}); toast('Enviado: '+j.filename,1500); }
+  }
+  inp.value=""; renderUploads(); fillPicker();
+}
 
-// ---------- Playlist ----------
+// -------- playlist/builder --------
+async function manage(code){
+  const r=await api('/api/v1/terminal?code='+encodeURIComponent(code)); const j=await r.json();
+  if(!j.ok){alert('Erro ao carregar');return;}
+  await refreshSelects();
+  qs('#top_terminal').value=code; qs('#pl_terminal').value=code; showEditing(code);
+  STATE.uploads=j.uploads||[]; renderUploads(); fillPicker();
+  STATE.currentCode=code; STATE.playlist=(j.config&&j.config.playlist)||[]; qs('#pl_name').value=(j.config&&j.config.campaign)||''; renderPlaylist();
+  window.scrollTo({top:document.body.scrollHeight*0.30,behavior:'smooth'});
+}
 async function loadPlaylistFromTop(){ qs('#pl_terminal').value=qs('#top_terminal').value; await loadPlaylist(); }
 async function loadPlaylist(){
   const code=qs('#pl_terminal').value;
   const r=await api('/api/v1/config?code='+encodeURIComponent(code)); const j=await r.json();
   if(!j.ok){alert('Erro ao carregar');return;}
-  STATE.currentCode=code; STATE.playlist=j.playlist||[]; renderPlaylist(); showEditingChip(code);
+  STATE.currentCode=code; STATE.playlist=j.playlist||[]; qs('#pl_name').value=j.campaign||''; renderPlaylist(); showEditing(code);
 }
 function renderPlaylist(){
   const box=qs('#playlist'); box.innerHTML='';
-  STATE.playlist.forEach((it,idx)=>{
+  STATE.playlist.forEach((it,i)=>{
     const row=document.createElement('div'); row.className='flex';
     row.innerHTML=`
       <span class="pill">${it.type}</span>
-      <input style="flex:1" value="${it.url}" oninput="STATE.playlist[${idx}].url=this.value">
-      <input type="number" placeholder="duração (img/RSS)" value="${it.duration||0}"
-             oninput="STATE.playlist[${idx}].duration=parseInt(this.value||0,10)">
-      <button class="btn alt" onclick="move(${idx},-1)">↑</button>
-      <button class="btn alt" onclick="move(${idx},1)">↓</button>
-      <button class="btn warn" onclick="removeItem(${idx})">remover</button>`;
+      <input style="flex:1" value="${it.url}" oninput="STATE.playlist[${i}].url=this.value">
+      <input type="number" placeholder="duração img/RSS" value="${it.duration||0}" oninput="STATE.playlist[${i}].duration=parseInt(this.value||0,10)">
+      <button class="btn alt" onclick="move(${i},-1)">↑</button>
+      <button class="btn alt" onclick="move(${i},1)">↓</button>
+      <button class="btn warn" onclick="removeItem(${i})">remover</button>`;
     box.appendChild(row);
   });
 }
-function move(i,d){ const j=i+d; if(j<0||j>=STATE.playlist.length) return; [STATE.playlist[i],STATE.playlist[j]]=[STATE.playlist[j],STATE.playlist[i]]; renderPlaylist(); }
-function removeItem(i){ STATE.playlist.splice(i,1); renderPlaylist(); }
 function addItem(){
   const type=qs('#item_type').value;
   const url=(qs('#item_url').value||'').trim()||qs('#item_pick').value||'';
-  if(!url){alert('Informe URL ou escolha dos uploads');return;}
-  let dur=parseInt(qs('#item_dur').value||'0',10);
-  if(type==='image'&&dur<=0) dur=10; if(type==='video') dur=0;
+  if(!url){alert('Informe a URL ou escolha dos uploads');return;}
+  let dur=parseInt(qs('#item_dur').value||'0',10); if(type==='image'&&dur<=0) dur=10; if(type==='video') dur=0;
   STATE.playlist.push({type,url,duration:dur}); renderPlaylist();
 }
-function clearBuilder(){ STATE.playlist=[]; renderPlaylist(); }
+function move(i,d){ const j=i+d; if(j<0||j>=STATE.playlist.length) return; [STATE.playlist[i],STATE.playlist[j]]=[STATE.playlist[j],STATE.playlist[i]]; renderPlaylist(); }
+function removeItem(i){ STATE.playlist.splice(i,1); renderPlaylist(); }
+function clearBuilder(){ STATE.playlist=[]; renderPlaylist(); toast('Builder limpo'); }
 
 async function savePlaylist(){
   const code=qs('#pl_terminal').value;
-  const body={code,items:STATE.playlist,refresh_minutes:10,update_schedule_hours:[6,12,18]};
+  const body={code,items:STATE.playlist,campaign:qs('#pl_name').value,refresh_minutes:10,update_schedule_hours:[6,12,18]};
   const r=await api('/api/v1/playlist',{method:'POST',body:JSON.stringify(body)}); const j=await r.json();
   if(!j.ok){alert('Erro ao salvar: '+(j.error||'falha'));return;}
-  alert('Playlist salva (v'+j.config_version+')!'); await loadSummary();
+  setPushed(code,String(j.config_version||""));
+  toast(`Playlist salva (v${j.config_version||'-'})`);
+  await loadSummary(true);
 }
 
-// ---------- Boot ----------
+// sincronizar builder direto para um cartão
+async function pushTo(code){
+  if(!STATE.playlist.length){alert('Builder vazio. Carregue ou monte a playlist primeiro.');return;}
+  const body={code,items:STATE.playlist,campaign:qs('#pl_name').value,refresh_minutes:10,update_schedule_hours:[6,12,18]};
+  const r=await api('/api/v1/playlist',{method:'POST',body:JSON.stringify(body)}); const j=await r.json();
+  if(j.ok){ setPushed(code,String(j.config_version||"")); toast(`Enviado p/ ${code} (v${j.config_version})`); await loadSummary(); }
+  else{ alert('Erro: '+(j.error||'falha')); }
+}
+
+// comandos
+async function restart(code){ await api('/api/v1/terminal/command',{method:'POST',body:JSON.stringify({code,cmd:'restart'})}); toast('Comando enviado'); }
+
+// boot
 (async function init(){
-  await refreshClientSelects(true);
+  await refreshSelects();
   await listUploads();
   await loadSummary();
 })();
