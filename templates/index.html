@@ -6,84 +6,48 @@
   <title>{{ branding.name or 'Studio RS TV' }} — Painel</title>
   <style>
     :root{
-      --bg:#0f1522;
-      --panel:#141b2c;
-      --text:#e7eefc;
-      --muted:#9bb0d1;
+      --bg:#0f1522; --panel:#141b2c; --text:#e7eefc; --muted:#9bb0d1;
       --accent: {{ branding.primary_color or '#0a2458' }};
       --ok:#2ecc71; --warn:#f39c12; --danger:#e74c3c;
-      --card:#101725;
-      --border:#22304b;
-      --input:#0d1320;
+      --card:#101725; --border:#22304b; --input:#0d1320;
     }
-    .light{
-      --bg:#f5f7fb; --panel:#ffffff; --card:#ffffff; --text:#111827;
-      --muted:#6b7280; --border:#e5e7eb; --input:#ffffff;
-    }
+    .light{ --bg:#f5f7fb; --panel:#fff; --card:#fff; --text:#111827; --muted:#6b7280; --border:#e5e7eb; --input:#fff; }
     *{box-sizing:border-box}
-    body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-      background:var(--bg); color:var(--text);
-    }
-    header{
-      display:flex; align-items:center; gap:14px;
-      padding:14px 18px; border-bottom:1px solid var(--border);
-      background:linear-gradient(0deg, transparent, rgba(255,255,255,0.02));
-    }
-    .brand{
-      display:flex; align-items:center; gap:10px; font-weight:700;
-    }
-    .brand .dot{width:10px;height:10px;border-radius:50%;background:{{ branding.primary_color or '#0a2458' }}}
-    .brand img{height:28px; object-fit:contain}
-    .right{margin-left:auto; display:flex; align-items:center; gap:10px}
-    .btn{
-      background:var(--accent); color:#fff; border:none; border-radius:8px;
-      padding:9px 14px; font-weight:600; cursor:pointer;
-    }
-    .btn.outline{background:transparent; border:1px solid var(--accent); color:var(--text)}
-    .btn.ghost{background:#0000; border:1px solid var(--border); color:var(--text)}
-    .btn.small{padding:6px 10px; border-radius:7px; font-size:12px}
-    .wrap{max-width:1180px; margin:18px auto; padding:0 14px;}
-    .grid{display:grid; gap:14px}
-    @media(min-width:980px){ .grid.cols-2{grid-template-columns:1fr 1fr} }
-    .card{
-      background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px;
-    }
-    h2, h3{margin:6px 0 12px 0}
-    label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
-    input, select, textarea{
-      width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border);
-      background:var(--input); color:var(--text);
-    }
-    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-    .muted{font-size:12px; color:var(--muted)}
-    .uploads-list{max-height:280px; overflow:auto; border:1px dashed var(--border); border-radius:10px; padding:8px}
-    .upload-item{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px;
-      background:var(--card);
-    }
-    .pill{font-size:11px; padding:3px 8px; border:1px solid var(--border); border-radius:999px; color:var(--muted)}
-    .list{display:flex; flex-direction:column; gap:8px}
-    .pl-item{
-      display:flex; align-items:center; gap:10px;
-      border:1px solid var(--border); background:var(--card); border-radius:8px; padding:8px;
-    }
-    .drag{cursor:move; opacity:.85}
-    .w-120{width:120px}
-    .footer{margin:28px 0; text-align:center; color:var(--muted); font-size:13px}
-    a{color:var(--text)}
-    .ok{color:var(--ok)} .danger{color:var(--danger)} .warn{color:var(--warn)}
-    .chip{display:inline-flex; align-items:center; gap:6px; padding:5px 8px; border-radius:999px; border:1px solid var(--border); font-size:12px}
-    .divider{height:1px;background:var(--border);margin:10px 0}
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text);}
+    header{ display:flex; align-items:center; gap:14px; padding:14px 18px; border-bottom:1px solid var(--border); background:linear-gradient(0deg,transparent,rgba(255,255,255,.02));}
+    .brand{ display:flex; align-items:center; gap:10px; font-weight:700;}
+    .brand .dot{ width:10px;height:10px;border-radius:50%; background:{{ branding.primary_color or '#0a2458' }}}
+    .brand img{ height:28px; object-fit:contain}
+    .right{ margin-left:auto; display:flex; align-items:center; gap:10px}
+    .btn{ background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-weight:600; cursor:pointer;}
+    .btn.outline{ background:transparent; border:1px solid var(--accent); color:var(--text)}
+    .btn.ghost{ background:#0000; border:1px solid var(--border); color:var(--text)}
+    .btn.small{ padding:6px 10px; border-radius:7px; font-size:12px}
+    .wrap{ max-width:1180px; margin:18px auto; padding:0 14px;}
+    .grid{ display:grid; gap:14px}
+    @media(min-width:980px){ .grid.cols-2{ grid-template-columns:1fr 1fr } }
+    .card{ background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px;}
+    h2,h3{ margin:6px 0 12px 0}
+    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+    input,select,textarea{ width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--input); color:var(--text)}
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .muted{ font-size:12px; color:var(--muted)}
+    .uploads-list{ max-height:280px; overflow:auto; border:1px dashed var(--border); border-radius:10px; padding:8px}
+    .upload-item{ display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; background:var(--card)}
+    .pill{ font-size:11px; padding:3px 8px; border:1px solid var(--border); border-radius:999px; color:var(--muted)}
+    .list{ display:flex; flex-direction:column; gap:8px}
+    .pl-item{ display:flex; align-items:center; gap:10px; border:1px solid var(--border); background:var(--card); border-radius:8px; padding:8px}
+    .drag{ cursor:move; opacity:.85}
+    .w-120{ width:120px}
+    .footer{ margin:28px 0; text-align:center; color:var(--muted); font-size:13px}
+    a{ color:var(--text)}
+    .divider{ height:1px; background:var(--border); margin:10px 0}
   </style>
 </head>
 <body>
 <header>
   <div class="brand">
-    {% if branding.logo_url %}
-      <img src="{{ branding.logo_url }}" alt="logo">
-    {% endif %}
+    {% if branding.logo_url %}<img src="{{ branding.logo_url }}" alt="logo">{% endif %}
     <span>{{ branding.name or 'Studio RS TV' }}</span>
     <span class="dot" title="cor da marca"></span>
   </div>
@@ -122,7 +86,7 @@
 
     <div class="row">
       <div style="flex:1 1 auto">
-        <label>Selecionar terminal</label>
+        <label>Selecionar terminal (topo)</label>
         <select id="sel_terminal"></select>
       </div>
       <button class="btn outline" onclick="carregarPlaylist()">Carregar Playlist</button>
@@ -146,6 +110,15 @@
   <section class="card">
     <h3>Playlist por Terminal</h3>
 
+    <!-- seletor de terminal DENTRO da playlist -->
+    <div class="row" style="margin-bottom:6px">
+      <div style="flex:1 1 auto">
+        <label>Terminal (playlist)</label>
+        <select id="sel_terminal_pl"></select>
+      </div>
+      <button class="btn ghost" onclick="sincronizarSelectores()">Sincronizar com topo</button>
+    </div>
+
     <div class="row">
       <select id="add_type" class="w-120">
         <option value="video">Vídeo</option>
@@ -157,7 +130,7 @@
         <option value="url">Usar URL</option>
       </select>
       <input id="add_url" placeholder="URL ou /static/uploads/arquivo.ext" style="flex:1 1 260px">
-      <input id="add_dur" placeholder="Duração (s) para imagem/RSS" class="w-120">
+      <input id="add_dur" placeholder="Duração (s) p/ imagem/RSS" class="w-120">
       <button class="btn" onclick="adicionarItem()">Adicionar</button>
     </div>
 
@@ -170,7 +143,7 @@
       <input id="update_hours" class="w-120" value="6,12,18" placeholder="Horas (6,12,18)">
       <button class="btn outline" onclick="salvarSettings()">Salvar Agenda</button>
       <button class="btn outline" onclick="cmdRestart()">Reiniciar Player</button>
-      <span class="muted">Atualização sem tela preta. O player troca após baixar todos os arquivos.</span>
+      <span class="muted">Atualização sem tela preta.</span>
     </div>
 
     <div class="row" style="margin-top:12px">
@@ -203,19 +176,16 @@
 </div>
 
 <script>
-  // ===== helpers =====
+  // ===== helpers & state =====
   const $ = id => document.getElementById(id);
-  const state = { uploads:[], items:[], terminal:'' };
+  const state = { uploads:[], items:[], terminal:'', clients:[] };
 
   function onLoad(){
-    // Tema
     const savedTheme = localStorage.getItem('theme') || 'dark';
     if(savedTheme==='light') document.body.classList.add('light');
     $('themeLabel').innerText = 'tema: ' + (document.body.classList.contains('light')?'claro':'escuro');
 
-    // carregar lista de clientes/terminais em seguida
-    carregarTerminais();
-    listarUploads();
+    carregarTerminais().then(()=>listarUploads());
   }
   document.addEventListener('DOMContentLoaded', onLoad);
 
@@ -239,42 +209,69 @@
     const j = await r.json();
     if(!j.ok){ alert('Erro ao salvar cliente'); return; }
     alert('Cliente/terminais salvos!');
-    carregarTerminais(code);
+    await carregarTerminais(code);
+  }
+
+  function rotuloTerminal(cliName, cliCode, termNum){
+    const t = String(termNum).padStart(2,'0');
+    const name = cliName || ('Cliente ' + cliCode);
+    return `${name} — ${cliCode}-${t}`;
   }
 
   async function carregarTerminais(preselectClient){
-    const sel = $('sel_terminal'); sel.innerHTML='';
+    const selTop = $('sel_terminal');
+    const selPL  = $('sel_terminal_pl');
+    selTop.innerHTML=''; selPL.innerHTML='';
+
     const r = await fetch('/api/v1/clients'); const j = await r.json();
-    if(!j.ok) return;
-    let first='';
-    (j.items||[]).forEach(cli=>{
+    if(!j.ok){ return; }
+    state.clients = j.items||[];
+
+    let firstVal='';
+    state.clients.forEach(cli=>{
       (cli.terminals||[]).forEach(t=>{
-        const opt = document.createElement('option');
-        opt.value = cli.code+'-'+t;
-        opt.textContent = `${cli.code}-${t} — ${cli.name||'Cliente'}`;
-        sel.appendChild(opt);
-        if(!first) first = opt.value;
+        const value = `${cli.code}-${String(t).padStart(2,'0')}`;
+        const label = rotuloTerminal(cli.name, cli.code, t);
+
+        const o1 = document.createElement('option'); o1.value=value; o1.textContent=label;
+        const o2 = document.createElement('option'); o2.value=value; o2.textContent=label;
+
+        selTop.appendChild(o1); selPL.appendChild(o2);
+        if(!firstVal) firstVal=value;
       });
     });
-    if(first){ sel.value = first; state.terminal = first; }
-    if(preselectClient){
-      // tenta escolher o primeiro terminal desse cliente
-      for(const o of sel.options){ if(o.value.startsWith(preselectClient+'-')){ sel.value=o.value; state.terminal=o.value; break; } }
-    }
+
+    // seleção padrão
+    const applySelect = (code)=>{
+      for(const o of selTop.options){ if(o.value.startsWith(code+'-')){ selTop.value=o.value; break; } }
+      for(const o of selPL.options){ if(o.value.startsWith(code+'-')){ selPL.value=o.value; break; } }
+    };
+
+    if(preselectClient){ applySelect(preselectClient); }
+    else { selTop.value=firstVal; selPL.value=firstVal; }
+
+    state.terminal = selTop.value || selPL.value || '';
     atualizarInfoTerminal();
+
+    // sincronizar mudanças
+    selTop.onchange = ()=>{ state.terminal = selTop.value; selPL.value = selTop.value; atualizarInfoTerminal(); };
+    selPL .onchange = ()=>{ state.terminal = selPL.value;  selTop.value = selPL.value;  atualizarInfoTerminal(); };
   }
 
-  function getTermCode(){ 
-    const val = $('sel_terminal').value;
-    state.terminal = val;
-    return val||'';
+  function sincronizarSelectores(){
+    $('sel_terminal').value = $('sel_terminal_pl').value;
+    state.terminal = $('sel_terminal').value;
+    atualizarInfoTerminal();
   }
 
   function atualizarInfoTerminal(){
     $('terminal_info').innerHTML = state.terminal ? `Terminal selecionado: <b>${state.terminal}</b>` : '';
   }
 
-  $('sel_terminal').addEventListener('change', atualizarInfoTerminal);
+  function getTermCode(){
+    state.terminal = $('sel_terminal_pl').value || $('sel_terminal').value || '';
+    return state.terminal || '';
+  }
 
   // ===== uploads =====
   async function listarUploads(){
@@ -309,7 +306,7 @@
     const fi = $('file'); if(!fi.files.length){ alert('Escolha arquivos'); return; }
     for(const f of fi.files){
       const fd = new FormData(); fd.append('file', f);
-      const r = await fetch('/upload', {method:'POST', body:fd});
+      const r = await fetch('/upload',{method:'POST',body:fd});
       const j = await r.json();
       if(!j.ok){ alert('Falha ao enviar: '+f.name); return; }
     }
@@ -318,7 +315,7 @@
     alert('Uploads enviados!');
   }
 
-  // ===== playlist (array em memória) =====
+  // ===== playlist em memória =====
   function normalizeItem(it){
     let t = (it.type||'').toLowerCase();
     if(!t) t = it.url && /\.(png|jpg|jpeg|gif|webp)$/i.test(it.url) ? 'image' : 'video';
@@ -327,24 +324,16 @@
     if(t==='video') d = 0;
     return {type:t, url:it.url.trim(), duration:d};
   }
-
   function adicionarItem(){
-    let type = $('add_type').value;
     const mode = $('add_from').value;
-    let url = '';
-    if(mode==='uploads'){
-      url = $('add_url').value.trim();
-      if(!url){ alert('Selecione um upload (use o botão "usar").'); return; }
-    }else{
-      url = $('add_url').value.trim();
-      if(!url){ alert('Informe a URL.'); return; }
-    }
+    let url = $('add_url').value.trim();
+    if(!url){ alert('Informe a URL ou use um upload.'); return; }
+    const type = $('add_type').value;
     const duration = parseInt($('add_dur').value||'0',10);
-    state.items.push(normalizeItem({type, url, duration}));
+    state.items.push(normalizeItem({type,url,duration}));
     $('add_url').value=''; $('add_dur').value='';
     renderPlaylist();
   }
-
   function limparPlaylist(){ state.items=[]; renderPlaylist(); }
 
   function renderPlaylist(){
@@ -368,8 +357,7 @@
         <input style="flex:1 1 260px" value="${it.url}" oninput="updUrl(${idx}, this.value)">
         <button class="btn ghost small" onclick="moveUp(${idx})">↑</button>
         <button class="btn ghost small" onclick="moveDown(${idx})">↓</button>
-        <button class="btn outline small" onclick="remItem(${idx})">Remover</button>
-      `;
+        <button class="btn outline small" onclick="remItem(${idx})">Remover</button>`;
       box.appendChild(div);
     });
   }
@@ -379,39 +367,28 @@
   function moveDown(i){ if(i>=state.items.length-1) return; const a=state.items[i+1]; state.items[i+1]=state.items[i]; state.items[i]=a; renderPlaylist(); }
   function remItem(i){ state.items.splice(i,1); renderPlaylist(); }
 
-  // ===== carregar e salvar =====
-  function selCode(){
-    const v = getTermCode();
-    if(!v){ alert('Selecione um terminal'); return null; }
-    return v;
-  }
-
+  // ===== carregar/salvar =====
   async function carregarPlaylist(){
-    const code = selCode(); if(!code) return;
+    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
     const r = await fetch('/api/v1/config?code='+encodeURIComponent(code));
     const j = await r.json();
     if(!j.ok){ alert('Não foi possível carregar a playlist'); return; }
-    // converter para relativo quando for do próprio servidor
     state.items = (j.playlist||[]).map(it=>{
-      let url=it.url||'';
-      try{
-        const root = location.origin;
-        if(url.startsWith(root)) url = url.substring(root.length);
-      }catch(e){}
+      let url=it.url||''; try{ const root=location.origin; if(url.startsWith(root)) url=url.substring(root.length); }catch(e){}
       return normalizeItem({type:it.type,url,duration:it.duration});
     });
     $('refresh_minutes').value = j.refresh_minutes||10;
-    $('update_hours').value   = (j.update_schedule_hours||[6,12,18]).join(',');
+    $('update_hours').value = (j.update_schedule_hours||[6,12,18]).join(',');
     renderPlaylist();
     $('diag').textContent = JSON.stringify(j,null,2);
   }
 
   async function salvarPlaylist(){
-    const code = selCode(); if(!code) return;
+    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
     const items = state.items.map(normalizeItem);
     const refresh = parseInt($('refresh_minutes').value||'10',10);
     const hours   = $('update_hours').value.split(',').map(x=>parseInt(x.trim(),10)).filter(x=>!isNaN(x));
-    const body = { code, items, refresh_minutes: refresh, update_schedule_hours: hours };
+    const body = { code, items, refresh_minutes:refresh, update_schedule_hours:hours };
     const r = await fetch('/api/v1/playlist',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const j = await r.json();
     if(!j.ok){ alert('Erro ao salvar: '+(j.error||'')); return; }
@@ -420,7 +397,7 @@
   }
 
   async function salvarSettings(){
-    const code = selCode(); if(!code) return;
+    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
     const [client, term] = code.split('-');
     const refresh = parseInt($('refresh_minutes').value||'10',10);
     const hours   = $('update_hours').value.split(',').map(x=>parseInt(x.trim(),10)).filter(x=>!isNaN(x));
@@ -435,7 +412,7 @@
 
   // ===== comandos / pareamento =====
   async function cmdRestart(){
-    const code = selCode(); if(!code) return;
+    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
     const [client,term] = code.split('-');
     const r = await fetch('/api/v1/terminal/command',{
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -444,17 +421,14 @@
     const j = await r.json(); if(!j.ok){ alert('Erro'); return; }
     alert('Comando enviado');
   }
-
   async function reqPair(){
     const r = await fetch('/api/v1/pair/request',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
     const j = await r.json(); if(!j.ok){ alert('Erro'); return; }
-    $('pair_code').value = j.pair_code;
-    alert('Código gerado: '+j.pair_code);
+    $('pair_code').value = j.pair_code; alert('Código gerado: '+j.pair_code);
   }
   async function attachPair(){
-    const pair=$('pair_code').value.trim();
-    if(!pair){ alert('Informe o código'); return; }
-    const code = selCode(); if(!code) return;
+    const pair=$('pair_code').value.trim(); if(!pair){ alert('Informe o código'); return; }
+    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
     const [client,term]=code.split('-');
     const r = await fetch('/api/v1/pair/attach',{method:'POST',headers:{'Content-Type':'application/json'}, body: JSON.stringify({pair_code:pair, client_code:client, term:parseInt(term,10)})});
     const j = await r.json(); if(!j.ok){ alert('Erro ao anexar'); return; }
@@ -462,15 +436,11 @@
   }
 
   // ===== diagnóstico =====
-  async function ping(){
-    const r = await fetch('/api/v1/ping'); const j = await r.json();
-    $('diag').textContent = JSON.stringify(j,null,2);
-  }
+  async function ping(){ const r = await fetch('/api/v1/ping'); const j = await r.json(); $('diag').textContent=JSON.stringify(j,null,2); }
   async function verConfig(){
-    const code = selCode(); if(!code) return;
+    const code = getTermCode(); if(!code) return alert('Selecione um terminal');
     const r = await fetch('/api/v1/config?code='+encodeURIComponent(code));
-    const j = await r.json();
-    $('diag').textContent = JSON.stringify(j,null,2);
+    const j = await r.json(); $('diag').textContent = JSON.stringify(j,null,2);
   }
 </script>
 </body>
