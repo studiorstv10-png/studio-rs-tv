@@ -1,435 +1,211 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>{{ brand.name }} — Painel</title>
+  <meta charset="utf-8">
+  <title>{{ branding.name }} — Painel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --brand: {{ brand.primary_color|default('#0d1b2a') }}; }
-    *{ box-sizing:border-box }
-    body{ margin:0; background:#0b0e11; color:#e9eef5; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif }
-    header{ background:var(--brand); padding:16px 20px; display:flex; align-items:center; gap:12px }
-    header img{ height:36px; display:block }
-    header .title{ font-weight:800 }
-    main{ max-width:1200px; margin:0 auto; padding:20px }
-    .grid{ display:grid; grid-template-columns:repeat(12,1fr); gap:16px }
-    .card{ grid-column:span 12; background:#11161c; border:1px solid #1b2530; border-radius:12px; padding:16px }
-    @media (min-width:900px){ .col-4{grid-column:span 4} .col-6{grid-column:span 6} .col-12{grid-column:span 12} }
-    h2{ margin:0 0 10px; font-size:16px; font-weight:800 }
-    label{ display:block; font-size:13px; margin:10px 0 6px; color:#9fb3c8 }
-    input[type="text"],input[type="url"],input[type="time"],input[type="date"],select,textarea{
-      width:100%; padding:10px 12px; border-radius:8px; border:1px solid #293341; background:#0e141a; color:#e9eef5
-    }
-    textarea{ min-height:84px; resize:vertical }
-    input::placeholder,textarea::placeholder{ color:#6e8297 }
-    .row{ display:flex; gap:12px; flex-wrap:wrap }
-    .row > div{ flex:1 1 220px }
-    .btn{ display:inline-block; margin-top:12px; padding:10px 14px; border-radius:8px;
-          background:#0e141a; border:1px solid #2a3645; color:#e9eef5; cursor:pointer; text-decoration:none }
-    .btn.primary{ background:var(--brand); border-color:transparent }
-    .muted{ color:#9fb3c8; font-size:13px }
-    ul.list{ list-style:none; padding:0; margin:6px 0 0; max-height:240px; overflow:auto }
-    ul.list li{ display:flex; align-items:center; justify-content:space-between; gap:10px;
-                padding:8px 10px; border:1px solid #22303d; border-radius:8px; margin-bottom:8px; background:#0f141a; font-size:14px }
-    ul.list code{ color:#cfe3ff; font-size:12px }
-    table{ width:100%; border-collapse:collapse; font-size:14px }
-    th,td{ border:1px solid #22303d; padding:8px; text-align:left }
-    .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; vertical-align:middle; margin-right:6px }
-    .ok{ background:#38d996 } .off{ background:#ff6b6b }
-    details{ border:1px solid #22303d; border-radius:10px; padding:10px; background:#0f141a; margin:8px 0 }
-    summary{ cursor:pointer; font-weight:700 }
-    footer{ text-align:center; color:#9fb3c8; padding:14px; border-top:1px solid #1b2530; margin-top:24px }
-    footer a{ color:#b9d6ff; text-decoration:none } footer a:hover{ text-decoration:underline }
-    .chip{ display:inline-flex; align-items:center; gap:6px; background:#0d141a; border:1px solid #22303d; border-radius:999px; padding:6px 10px; font-size:12px }
+    :root { --primary: {{ branding.primary_color }}; }
+    body { font-family: system-ui, Arial, sans-serif; margin:0; color:#0b0b0b; }
+    header { background: var(--primary); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px; }
+    header img { height:36px; width:auto; }
+    header .brand { font-weight:800; letter-spacing:.5px; }
+    main { padding: 16px; display:grid; gap:16px; grid-template-columns: 1fr 1fr; }
+    h2 { margin:.2rem 0 .6rem; color:#0a2458; }
+    .card { border:1px solid #e5e7eb; border-radius:12px; padding:12px; background:#fff; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:.4rem 0; }
+    input[type=text], input[type=number] { padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; min-width: 140px; }
+    button { padding:8px 12px; border:1px solid var(--primary); color:var(--primary); background:#fff; border-radius:10px; cursor:pointer; font-weight:700; }
+    button:hover { background: var(--primary); color:#fff; }
+    ul { margin:.4rem 0; padding-left:18px; }
+    .pill { padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:.85rem; }
+    .list { max-height: 320px; overflow:auto; border:1px dashed #cbd5e1; border-radius:8px; padding:8px; }
+    .item { display:flex; justify-content:space-between; align-items:center; padding:6px; border-bottom:1px solid #f1f5f9; font-size:.95rem; }
+    .item:last-child{border-bottom:0}
+    .muted { color:#64748b; font-size:.9rem; }
+    footer { padding:12px 16px; border-top:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; }
+    a { color: var(--primary); text-decoration: none; }
   </style>
 </head>
 <body>
 <header>
-  <img src="{{ brand.logo }}" alt="logo" onerror="this.src='/static/logo.png'">
-  <div class="title">{{ brand.name }} — Painel</div>
-  <div style="margin-left:auto" class="muted">Tema ativo</div>
+  {% if branding.logo_url %}
+    <img src="{{ branding.logo_url }}" alt="logo" onerror="this.style.display='none'"/>
+  {% endif %}
+  <div class="brand">{{ branding.name }}</div>
 </header>
 
 <main>
-  <div class="grid">
+  <!-- CLIENTE / TERMINAIS -->
+  <section class="card">
+    <h2>Cliente & Terminais</h2>
+    <div class="row">
+      <input id="client_code" placeholder="Código cliente (ex.: 1 ou 001)" />
+      <input id="client_name" placeholder="Nome do cliente" />
+    </div>
+    <div class="row">
+      <input id="client_terms" type="number" min="1" value="1" title="Qtde terminais"/>
+      <input id="client_days" type="number" min="1" value="30" title="Dias de licença"/>
+      <button onclick="createClient()">Criar/Atualizar</button>
+      <a class="pill" href="/clients" title="Gerenciar licenças">Gerenciar licenças →</a>
+    </div>
+    <div class="muted">Ao criar 3 terminais para cliente 1, os códigos ficam: <b>001-01</b>, <b>001-02</b>, <b>001-03</b>.</div>
+    <div id="client_msg" class="muted"></div>
+  </section>
 
-    <!-- Terminais (unitário) + Parear -->
-    <section class="card col-6">
-      <h2>Terminais (unitário)</h2>
-      <div class="row">
-        <div><label>Nome</label><input id="tname" placeholder="BOX-001"></div>
-        <div><label>Código (opcional)</label><input id="tcode" placeholder="001"></div>
-      </div>
-      <div class="row">
-        <div><label>Cliente</label><input id="client" placeholder="Nome do Cliente"></div>
-        <div><label>Grupo / Setor</label><input id="group" placeholder="Açougue, Bebidas..."></div>
-      </div>
-      <button class="btn primary" onclick="saveTerminal()">Criar / Atualizar</button>
-      <div id="tmsg" class="muted" style="margin-top:8px"></div>
+  <!-- UPLOAD -->
+  <section class="card">
+    <h2>Uploads</h2>
+    <div class="row">
+      <input type="file" id="file" multiple />
+      <button onclick="doUpload()">Enviar</button>
+      <button onclick="refreshUploads()">Atualizar lista</button>
+    </div>
+    <div class="list" id="uploads_list"></div>
+  </section>
 
-      <hr style="border:none;border-top:1px solid #1b2530;margin:16px 0">
-      <h2>Parear Box</h2>
-      <div class="row">
-        <div><label>Código de pareamento (mostrado na TV)</label><input id="pairCode" placeholder="ABC123"></div>
-        <div><label>Terminal</label><select id="pairTerminal"></select></div>
-      </div>
-      <button class="btn" onclick="pairClaim()">Vincular</button>
-      <div id="pairMsg" class="muted" style="margin-top:8px"></div>
-    </section>
+  <!-- PLAYLIST BUILDER -->
+  <section class="card">
+    <h2>Playlist por Terminal</h2>
+    <div class="row">
+      <input id="term_code" placeholder="Code do terminal (ex.: 001-01)"/>
+      <input id="img_dur" type="number" min="1" value="10" title="Duração padrão p/ imagens (s)"/>
+      <input id="refresh_minutes" type="number" min="1" value="10" title="Refresh (min)"/>
+      <button onclick="savePlaylist()">Salvar Playlist</button>
+      <button onclick="loadConfig()">Ver Config</button>
+    </div>
+    <div class="muted">Vídeos tocam até o fim. Imagens usam a duração acima (ajustável por item).</div>
+    <div class="list" id="playlist_list"></div>
+  </section>
 
-    <!-- Criar em Lote + Import CSV -->
-    <section class="card col-6">
-      <h2>Criação em Lote / Importação</h2>
-      <div class="row">
-        <div><label>Cliente</label><input id="bulkClient" placeholder="João"></div>
-        <div><label>Base do nome</label><input id="bulkBase" placeholder="BOX" value="BOX"></div>
-        <div><label>Qtd</label><input id="bulkCount" placeholder="10" value="5"></div>
-      </div>
-      <div class="row">
-        <div><label>Início do código</label><input id="bulkStart" placeholder="1" value="1"></div>
-        <div><label>Dígitos</label><input id="bulkDigits" placeholder="3" value="3"></div>
-      </div>
-      <label>Grupos / Setores (uma linha por terminal)</label>
-      <textarea id="bulkGroups" placeholder="Bebidas&#10;Açougue&#10;Caixa"></textarea>
-      <button class="btn" onclick="createBulk()">Criar Lote</button>
-      <div id="bulkMsg" class="muted" style="margin-top:8px"></div>
-
-      <hr style="border:none;border-top:1px solid #1b2530;margin:16px 0">
-      <h3>Importar CSV</h3>
-      <div class="muted">Cabeçalho: <code>name,code,client,group</code></div>
-      <input type="file" id="csvFile" accept=".csv">
-      <button class="btn" onclick="importCSV()">Importar</button>
-      <div id="csvMsg" class="muted" style="margin-top:8px"></div>
-    </section>
-
-    <!-- Uploads -->
-    <section class="card col-12">
-      <h2>Uploads</h2>
-      <form id="upForm">
-        <input type="file" id="files" name="files" multiple />
-        <button class="btn" type="submit">Enviar</button>
-      </form>
-      <div class="muted" id="upMsg"></div>
-      <ul class="list" id="uploadsList"></ul>
-    </section>
-
-    <!-- Campanha -->
-    <section class="card col-12">
-      <h2>Campanha (playlist nomeada c/ agendamento)</h2>
-      <div class="row">
-        <div class="col"><label>Nome da campanha</label><input id="campName" placeholder="Semana do Cliente"></div>
-        <div class="col"><label>Carregar playlist do terminal</label>
-          <div class="row">
-            <div><select id="plTerminal"></select></div>
-            <div><button class="btn" onclick="loadPlaylist()">Carregar Playlist</button></div>
-          </div>
-        </div>
-      </div>
-
-      <details>
-        <summary>Agendamento (opcional)</summary>
-        <div class="row">
-          <div><label>Início (data)</label><input type="date" id="schStartDate"></div>
-          <div><label>Fim (data)</label><input type="date" id="schEndDate"></div>
-          <div><label>De (hora)</label><input type="time" id="schStartTime" value="08:00"></div>
-          <div><label>Até (hora)</label><input type="time" id="schEndTime" value="18:00"></div>
-        </div>
-        <div class="row">
-          <div class="chip"><input type="checkbox" id="dMon" checked> seg</div>
-          <div class="chip"><input type="checkbox" id="dTue" checked> ter</div>
-          <div class="chip"><input type="checkbox" id="dWed" checked> qua</div>
-          <div class="chip"><input type="checkbox" id="dThu" checked> qui</div>
-          <div class="chip"><input type="checkbox" id="dFri" checked> sex</div>
-          <div class="chip"><input type="checkbox" id="dSat"> sáb</div>
-          <div class="chip"><input type="checkbox" id="dSun"> dom</div>
-        </div>
-      </details>
-
-      <div class="row">
-        <div style="flex:1">
-          <label>Alvos (segure CTRL/CMD para múltiplos)</label>
-          <select id="plTargets" multiple size="7"></select>
-        </div>
-        <div style="flex:2">
-          <label>Adicionar itens</label>
-          <div class="row">
-            <div>
-              <select id="plType">
-                <option value="video">Vídeo</option>
-                <option value="image">Imagem</option>
-                <option value="rss">RSS</option>
-              </select>
-            </div>
-            <div>
-              <select id="fromUploads"></select>
-            </div>
-            <div>
-              <input id="plUrl" placeholder="/static/uploads/arquivo.ext ou https://..." />
-            </div>
-            <div>
-              <input id="plDur" type="text" value="10" title="Duração p/ imagem/RSS (s)"/>
-            </div>
-            <div><button class="btn" onclick="addItem()">Adicionar</button></div>
-          </div>
-          <ul class="list" id="plist"></ul>
-          <button class="btn primary" onclick="saveCampaign()">Salvar campanha</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Clientes & Terminais -->
-    <section class="card col-12">
-      <div style="display:flex; align-items:center; gap:10px">
-        <h2 style="margin:0">Clientes & Terminais</h2>
-        <button class="btn" onclick="renderClients()">Atualizar</button>
-      </div>
-      <div id="clientsView"></div>
-    </section>
-
-    <!-- Alertas -->
-    <section class="card col-12">
-      <div style="display:flex; align-items:center; gap:10px">
-        <h2 style="margin:0">Alertas</h2>
-        <button class="btn" onclick="loadAlerts()">Atualizar</button>
-      </div>
-      <ul class="list" id="alertsList"></ul>
-    </section>
-
-    <!-- Diagnóstico -->
-    <section class="card col-12">
-      <h2>Diagnóstico</h2>
-      <div class="row">
-        <div><button class="btn" onclick="diag('/api/v1/ping')">/api/v1/ping</button></div>
-        <div><button class="btn" onclick="diag('/api/v1/campaigns')">/api/v1/campaigns</button></div>
-      </div>
-      <pre id="diag" class="muted" style="white-space:pre-wrap; margin-top:10px;"></pre>
-    </section>
-
-  </div>
+  <!-- DIAGNÓSTICO -->
+  <section class="card">
+    <h2>Status do Terminal</h2>
+    <pre id="diag" class="muted">—</pre>
+    <div class="row">
+      <a href="{{ support_link }}" target="_blank">Suporte WhatsApp</a>
+    </div>
+  </section>
 </main>
 
 <footer>
-  Desenvolvido por: <strong>Studio RS Ilhabela</strong> —
-  <a href="{{ brand.support_wa }}" target="_blank" rel="noopener">Abrir suporte no WhatsApp</a>
+  <div class="muted">© {{ branding.name }}</div>
+  <a href="{{ support_link }}" target="_blank">Desenvolvido por: Studio RS Ilhabela — Suporte</a>
 </footer>
 
 <script>
-  const $=(id)=>document.getElementById(id);
-  const selValue=(id)=>{const s=$(id);return s&&s.value;}
+let uploads = [];
+let playlist = []; // {url, type, duration}
 
-  // ---------- Terminais ----------
-  async function refreshTerminals(){
-    const r=await fetch('/api/v1/terminals'); const j=await r.json();
-    const opts=(j.items||[]).map(t=>{
-      const key=(t.code||t.name);
-      return `<option value="${key}">${t.name} — ${t.client||'s/cliente'} ${t.group?('('+t.group+')'):''}</option>`
-    }).join('');
-    $('plTerminal').innerHTML=opts;
-    $('plTargets').innerHTML=opts;
-    $('pairTerminal').innerHTML=opts;
-  }
-  async function saveTerminal(){
-    const payload={
-      name:$('tname').value.trim(),
-      code:$('tcode').value.trim(),
-      client:$('client').value.trim(),
-      group:$('group').value.trim()
-    };
-    const r=await fetch('/api/v1/terminals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const j=await r.json(); $('tmsg').textContent=j.ok?'Terminal salvo!':(j.error||'Erro');
-    $('tname').value=''; $('tcode').value=''; $('client').value=''; $('group').value='';
-    await refreshTerminals(); await renderClients();
-  }
-  async function createBulk(){
-    const groupsText=$('bulkGroups').value.trim();
-    const groups = groupsText ? groupsText.split('\n').map(s=>s.trim()).filter(Boolean) : [];
-    const payload={
-      client:$('bulkClient').value.trim(),
-      base_name:$('bulkBase').value.trim(),
-      count:parseInt($('bulkCount').value||'0',10)||0,
-      code_start:parseInt($('bulkStart').value||'1',10)||1,
-      code_digits:parseInt($('bulkDigits').value||'3',10)||3,
-      groups
-    };
-    const r=await fetch('/api/v1/terminals/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const j=await r.json(); $('bulkMsg').textContent=j.ok?`Criados: ${j.created.length}`:(j.error||'Erro');
-    await refreshTerminals(); await renderClients();
-  }
-  async function importCSV(){
-    const f=$('csvFile').files[0]; if(!f){ $('csvMsg').textContent='Escolha um CSV.'; return; }
-    const fd=new FormData(); fd.append('file',f);
-    const r=await fetch('/api/v1/terminals/import',{method:'POST',body:fd}); const j=await r.json();
-    $('csvMsg').textContent=j.ok?`Importados: ${j.added}`:(j.error||'Erro'); await refreshTerminals(); await renderClients();
-  }
+function el(id){ return document.getElementById(id); }
 
-  // ---------- Uploads ----------
-  async function refreshUploads(){
-    const r=await fetch('/api/v1/uploads'); const j=await r.json();
-    $('uploadsList').innerHTML='';
-    $('fromUploads').innerHTML='<option value="">-- Escolher dos uploads --</option>';
-    (j.items||[]).forEach(it=>{
-      const li=document.createElement('li');
-      li.innerHTML=`<span>${it.name} <code>${it.type}</code></span>
-                    <span><a class="btn" href="${it.url}" target="_blank">abrir</a>
-                    <button class="btn" onclick="useUpload('${it.url}','${it.type}')">usar</button></span>`;
-      $('uploadsList').appendChild(li);
-      const o=document.createElement('option'); o.value=it.url; o.textContent=`${it.type}: ${it.name}`;
-      $('fromUploads').appendChild(o);
-    });
-  }
-  $('upForm').addEventListener('submit',async(e)=>{
-    e.preventDefault();
-    const data=new FormData();
-    for(const f of $('files').files) data.append('files',f);
-    $('upMsg').textContent='Enviando...';
-    const r=await fetch('/api/v1/upload',{method:'POST',body:data}); const j=await r.json();
-    $('upMsg').textContent=j.ok?'Ok!':(j.error||'Erro'); await refreshUploads();
+function itemRow(label, right){
+  const div = document.createElement('div');
+  div.className = 'item';
+  div.innerHTML = `<span>${label}</span>`;
+  if (right) div.appendChild(right);
+  return div;
+}
+
+async function createClient(){
+  const client_code = el('client_code').value.trim();
+  const name = el('client_name').value.trim();
+  const terminals = parseInt(el('client_terms').value || '1',10);
+  const license_days = parseInt(el('client_days').value || '30',10);
+  if(!client_code){ alert('Informe o código do cliente'); return; }
+  const r = await fetch('/api/v1/client', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({client_code, name, terminals, license_days})
   });
-  function useUpload(url,type){ $('plUrl').value=url; $('plType').value=type; }
+  const j = await r.json();
+  el('client_msg').textContent = j.ok ? 'Cliente salvo.' : ('Erro: '+(j.error||''));
+}
 
-  // ---------- Campanha ----------
-  let items=[];
-  function renderPlaylist(){
-    const ul=$('plist'); ul.innerHTML='';
-    items.forEach((it,i)=>{
-      const li=document.createElement('li');
-      li.innerHTML=`<span>${i+1}. ${it.type} — <code>${it.url}</code>${it.type==='image'||it.type==='rss'?` — ${it.duration}s`:''}</span>
-                    <button class="btn" onclick="items.splice(${i},1);renderPlaylist()">remover</button>`;
-      ul.appendChild(li);
-    });
+async function refreshUploads(){
+  const r = await fetch('/api/v1/uploads');
+  const j = await r.json();
+  const box = el('uploads_list');
+  box.innerHTML = '';
+  if (!j.ok){ box.textContent = 'Erro ao listar uploads'; return; }
+  uploads = j.items;
+  for (const u of uploads){
+    const btn = document.createElement('button');
+    btn.textContent = 'Adicionar';
+    btn.onclick = ()=> addToPlaylist(u);
+    box.appendChild(itemRow(`${u.type.toUpperCase()} — ${u.filename}`, btn));
   }
-  function addItem(){
-    const type=selValue('plType'); const from=selValue('fromUploads');
-    const url=($('plUrl').value.trim()||from);
-    if(!url){ alert('Informe URL ou escolha dos uploads.'); return; }
-    let dur=0; if(type==='image'||type==='rss'){ dur=parseInt($('plDur').value||'10',10)||10; }
-    items.push({type,url,duration:dur}); $('plUrl').value=''; $('fromUploads').value=''; renderPlaylist();
-  }
-  async function loadPlaylist(){
-    const term=selValue('plTerminal'); if(!term){ alert('Selecione um terminal.'); return; }
-    const r=await fetch(`/api/v1/playlists/${encodeURIComponent(term)}`); const j=await r.json();
-    items=j.items||[]; renderPlaylist();
-  }
-  function _daysSelected(){
-    const ds=[];
-    if($('dMon').checked) ds.push('mon');
-    if($('dTue').checked) ds.push('tue');
-    if($('dWed').checked) ds.push('wed');
-    if($('dThu').checked) ds.push('thu');
-    if($('dFri').checked) ds.push('fri');
-    if($('dSat').checked) ds.push('sat');
-    if($('dSun').checked) ds.push('sun');
-    return ds;
-  }
-  async function saveCampaign(){
-    const name=$('campName').value.trim(); if(!name){ alert('Dê um nome à campanha.'); return; }
-    const sel=[...$('plTargets').selectedOptions].map(o=>o.value);
-    if(sel.length===0){ alert('Selecione 1+ terminais nos alvos.'); return; }
-    if(items.length===0){ alert('Adicione ao menos 1 item na campanha.'); return; }
+}
 
-    const schedule={
-      days:_daysSelected(),
-      start_time: $('schStartTime').value || undefined,
-      end_time: $('schEndTime').value || undefined,
-      start_date: $('schStartDate').value || undefined,
-      end_date: $('schEndDate').value || undefined
-    };
+function addToPlaylist(u){
+  const isImage = u.type === 'image';
+  const dur = isImage ? parseInt(el('img_dur').value || '10', 10) : 0;
+  playlist.push({url: u.url, type: u.type, duration: dur});
+  renderPlaylist();
+}
 
-    const r=await fetch('/api/v1/campaigns/save',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name,items,targets:sel,schedule})
-    });
-    const j=await r.json(); if(j.ok){ alert('Campanha salva!'); renderClients(); } else { alert(j.error||'Erro'); }
+function renderPlaylist(){
+  const box = el('playlist_list');
+  box.innerHTML = '';
+  playlist.forEach((p, idx)=>{
+    const right = document.createElement('div');
+    right.className = 'row';
+    if (p.type === 'image'){
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.min = '1'; inp.value = p.duration;
+      inp.style.width = '70px';
+      inp.onchange = ()=> { p.duration = parseInt(inp.value||'10',10); };
+      right.appendChild(inp);
+    } else {
+      const span = document.createElement('span');
+      span.className = 'muted';
+      span.textContent = 'vídeo';
+      right.appendChild(span);
+    }
+    const rm = document.createElement('button');
+    rm.textContent = 'Remover';
+    rm.onclick = ()=> { playlist.splice(idx,1); renderPlaylist(); };
+    right.appendChild(rm);
+    box.appendChild(itemRow(`${idx+1}. ${p.type.toUpperCase()} — ${p.url}`, right));
+  });
+}
+
+async function doUpload(){
+  const fi = el('file');
+  if (!fi.files || !fi.files.length){ alert('Selecione arquivos'); return; }
+  for (const f of fi.files){
+    const fd = new FormData();
+    fd.append('file', f);
+    const r = await fetch('/upload', { method:'POST', body: fd });
+    const j = await r.json();
+    if(!j.ok){ alert('Falhou upload: '+(j.error||'')); break; }
   }
-  function focusTerminal(code){
-    [...$('plTargets').options].forEach(o=>o.selected = (o.value===code));
-    [...$('plTerminal').options].forEach(o=>{ if(o.value===code) $('plTerminal').value=code; });
-    loadPlaylist();
-    window.scrollTo({top:0,behavior:'smooth'});
-  }
-  async function loadOnly(code){
-    $('plTerminal').value = code;
-    await loadPlaylist();
-  }
+  fi.value = '';
+  refreshUploads();
+}
 
-  // ---------- Clientes & Terminais ----------
-  async function renderClients(){
-    const r=await fetch('/api/v1/status'); const j=await r.json(); const list=j.items||[];
-    const clients={};
-    list.forEach(it=>{
-      const c=it.client||'Sem cliente';
-      clients[c]=clients[c]||{name:c, items:[], online:0, total:0};
-      clients[c].items.push(it);
-      clients[c].total++;
-      if(it.online) clients[c].online++;
-    });
+async function savePlaylist(){
+  const code = el('term_code').value.trim();
+  if (!code){ alert('Informe o code do terminal (ex.: 001-01)'); return; }
+  if (playlist.length === 0){ alert('Playlist vazia'); return; }
+  const refresh_minutes = parseInt(el('refresh_minutes').value || '10', 10);
+  const r = await fetch('/api/v1/playlist', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ code, items: playlist, refresh_minutes })
+  });
+  const j = await r.json();
+  if (!j.ok){ alert('Erro ao salvar: ' + (j.error||'')); return; }
+  alert('Playlist salva para ' + j.code);
+}
 
-    const wrap=$('clientsView'); wrap.innerHTML='';
-    Object.values(clients).sort((a,b)=>a.name.localeCompare(b.name)).forEach(c=>{
-      const det=document.createElement('details');
-      det.innerHTML=`<summary>${c.name} — ${c.online}/${c.total} online</summary>`;
-      const table=document.createElement('table');
-      table.innerHTML=`
-        <thead><tr>
-          <th>Terminal</th><th>Grupo</th><th>Campanha</th>
-          <th>Estado</th><th>Último</th><th>Tocando</th><th>Ações</th>
-        </tr></thead><tbody></tbody>`;
-      const tb=table.querySelector('tbody');
-      c.items.sort((a,b)=>(a.name||a.code||'').localeCompare(b.name||b.code||'')).forEach(it=>{
-        const tr=document.createElement('tr');
-        const dot=`<span class="dot ${it.online?'ok':'off'}"></span>${it.online?'Online':'Offline'}`;
-        const playing=it.playing&&it.playing.url ? (it.playing.type+' — '+it.playing.url) : '-';
-        tr.innerHTML=`
-          <td>${it.name||it.code||'-'}</td>
-          <td>${it.group||'-'}</td>
-          <td>${it.campaign||'-'}</td>
-          <td>${dot}</td>
-          <td>${it.last_seen||'-'}</td>
-          <td>${playing}</td>
-          <td>
-            <button class="btn" onclick="focusTerminal('${it.code||it.name}')">Editar Playlist</button>
-            <button class="btn" onclick="loadOnly('${it.code||it.name}')">Carregar Playlist</button>
-          </td>`;
-        tb.appendChild(tr);
-      });
-      det.appendChild(table);
-      wrap.appendChild(det);
-    });
-  }
+async function loadConfig(){
+  const code = el('term_code').value.trim();
+  if (!code){ alert('Informe o code do terminal'); return; }
+  const r = await fetch('/api/v1/config?code=' + encodeURIComponent(code));
+  const txt = await r.text();
+  el('diag').textContent = txt;
+}
 
-  // ---------- Pareamento ----------
-  async function pairClaim(){
-    const code=$('pairCode').value.trim().toUpperCase();
-    const terminal=selValue('pairTerminal');
-    if(!code||!terminal){ $('pairMsg').textContent='Informe o código e o terminal.'; return; }
-    const r=await fetch('/api/v1/pair/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,terminal})});
-    const j=await r.json();
-    $('pairMsg').textContent = j.ok ? 'Vinculado com sucesso! O box vai reconhecer em instantes.' : (j.error||'Erro');
-    if(j.ok){ $('pairCode').value=''; }
-  }
-
-  // ---------- Alertas ----------
-  async function loadAlerts(){
-    const r=await fetch('/api/v1/alerts'); const j=await r.json();
-    const ul=$('alertsList'); ul.innerHTML='';
-    (j.items||[]).slice().reverse().forEach(a=>{
-      const li=document.createElement('li');
-      li.innerHTML=`<span>[${a.when}] <strong>${a.terminal}</strong> — ${a.client||'-'} ${a.group?('('+a.group+')'):''}</span>
-                    <span class="chip">offline</span>`;
-      ul.appendChild(li);
-    });
-  }
-
-  // ---------- Diagnóstico ----------
-  async function diag(url){ const r=await fetch(url); const j=await r.json(); $('diag').textContent=JSON.stringify(j,null,2); }
-
-  // ---------- init ----------
-  (async function init(){
-    await refreshTerminals();
-    await refreshUploads();
-    await renderClients();
-    await loadAlerts();
-  })();
+refreshUploads();
 </script>
 </body>
 </html>
